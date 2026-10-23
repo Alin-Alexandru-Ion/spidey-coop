@@ -1608,7 +1608,7 @@ void CQuadBit::SetTint(unsigned char a2, unsigned char a3, unsigned char a4)
 // @Ok
 void CQuadBit::SetSemiTransparent()
 {
-	this->mCodeBGR = (this->mCodeBGR & 0xFFFFFFFE) | 0x2C0;
+    this->mCodeBGR = (this->mCodeBGR & 0xFFFFFEFF) | 0x2C0;
 }
 
 // @Ok
@@ -1641,9 +1641,30 @@ void CQuadBit::OrientUsing(CVector *a2, SVECTOR *a3, int a4, int a5)
 {
 }
 
-// @MEDIUMTODO
-void CQuadBit::SetTexture(int a, int b){
-	
+// @Ok
+// @Matching
+void CQuadBit::SetTexture(i32 a, i32 b)
+{
+	ASSERT(a >= 0 && !(static_cast<u32>(a) >= NUM_ANIM_ENTRIES),
+		"Bad lookup value sent to CQuadBit::SetTexture");
+
+	SAnimFrame *pAnim = G_ANIM_TABLE[a];
+
+	ASSERT(b >= 0 && b < *reinterpret_cast<i32*>(&pAnim[-1].pTexture),
+		"Bad frame sent to CQuadBit::SetTexture");
+
+	this->mpTexture = pAnim[b].pTexture;
+
+	if (a == 0 && b == 0)
+		this->mpTexture = Spool_FindTextureEntry("Shadow2");
+
+	if (this->mpTexture->field_12 & 0xF0)
+		this->mCodeBGR |= 0x20u;
+
+	this->field_74 = *reinterpret_cast<u32*>(&this->mpTexture->u0);
+	this->field_78 = *reinterpret_cast<u32*>(&this->mpTexture->u1);
+	this->field_7C = *reinterpret_cast<u32*>(&this->mpTexture->u2);
+	this->field_80 = this->mpTexture->TexWin;
 }
 
 // @Ok
@@ -1974,16 +1995,19 @@ void CGlow::SetRadius(int radius)
 	}
 }
 
-// @NotOk
-// slightly different register allocation
+// @Ok
+// @Matching
 void CSimpleTexturedRibbon::SetRGB(unsigned char r, unsigned char g, unsigned char b)
 {
-	int value = (r | (((b << 8) | g) << 8));
 	u32 *ptr = this->field_48;
+	int value = (r | (((b << 8) | g) << 8));
 
 	int i = 0;
 	for (i = 0; i < this->field_3C + 1; i++)
-		ptr[i] = value;
+	{
+		*ptr = value;
+		ptr++;
+	}
 }
 
 // @Ok
@@ -2592,6 +2616,12 @@ void patch_CBit(void)
 	PATCH_PUSH_RET(0x00408900, CBit::DeleteFrom);
 	PATCH_PUSH_RET(0x00408930, CBit::Die);
 	PATCH_PUSH_RET(0x00408950, CBit::SetPos);
+	PATCH_PUSH_RET_POLY(
+		0x004090E0,
+		CQuadBit::SetTexture,
+		"?SetTexture@CQuadBit@@QAEXHH@Z");
+	PATCH_PUSH_RET(0x00409390, CQuadBit::SetSemiTransparent);
+	PATCH_PUSH_RET(0x0040A920, CSimpleTexturedRibbon::SetRGB);
 }
 
 // @Bogus
