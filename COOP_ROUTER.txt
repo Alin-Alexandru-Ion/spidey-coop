@@ -1,0 +1,311 @@
+Co-op coordinator: CPLAYER-5 (2026-09-13)
+
+Current architecture
+- The roster contains two CPlayer pointers with generation-stamped handles.
+  Publish accepts CPlayer only; there is no standalone CSuper preview path.
+  CPlayer still inherits CSuper in the original engine, as it should.
+- P1 remains the retail player. P2 is constructed by retail 004B9EB0 with
+  a new 0xEFC allocation and destroyed by retail 004C9210.
+- P2 owns an independently constructed retail CCamera (00415EE0, size 0x2F4)
+  and SControl (size 0x18C). Neither is a shallow copy of P1.
+- Original CBody::Update (00460F90) advances P2 timing/animation and invokes
+  its original CPlayer::AI (004C65C0), followed by the original camera update.
+  CPLAYER-38 moved the P2 body tick to the shared player-list boundary so it
+  can run even if P1 is waiting/dead. Render passes never replay gameplay.
+  Pause, letterbox and foreground gates are retained.
+- coop_motion.h and the custom yaw/follow camera have been removed.
+  Key 7 pose mirroring has been retired: gameplay animation belongs to each
+  CPlayer's state machine.
+
+Legacy translation
+- The registry/router is the authoritative two-player roster.
+- The legacy MechList and CameraList remain P1 outside P2 execution. During
+  P2 constructor/update/destructor calls, the context bank exposes P2's own
+  single-player list heads/counts and restores the enclosing context afterwards.
+  This accommodates the original constructor's count==1 invariant without
+  disabling it or corrupting P1's intrusive list links.
+- The context bank exchanges explicitly listed player/camera singleton storage,
+  input aliases, animation timing, and player-owned effects. Overlapping ranges
+  are merged so bytes are exchanged once. Mutable animation command pointees
+  are banked too: copying only their pointer table would still corrupt P1.
+- Shared actors, geometry/collision grids, world time and mission queues are not
+  duplicated or replayed. Effects written into shared world lists remain shared.
+- P2 constructor's BagHead call is skipped with a verified call-site wrapper,
+  since it rewrites shared mesh vertices. P1 retains the original call.
+- P2 destruction isolates its own effects and skips shared costume teardown
+  and checkpoint inventory writes through scoped lifecycle state.
+- Owned operations never fall back to the other player. Shared target/interaction
+  queries support nearest, range, caller conditions, preferred target and health.
+  These query helpers do not automatically intercept every retail gameplay call.
+
+Controls
+0 top row: force exit; 9: join/recreate nearby; 8: drop out.
+6: cycle left/right, top/bottom, single view.
+P2 arrows: movement; numpad 1: jump; 2: punch; 3: kick; 0: swing;
+4: aim; 5: web; 6: zip. The entire set feeds the retail control structure and
+state machine; retail action availability/geometry still determine outcomes.
+Both physical button fields and the PC gameplay aliases receive matching input.
+Initial P2 death policy is drop-out before another death-controller tick.
+
+Validation and limits
+- VS6 compilation and binary layout checks are required.
+- tests/coop/run_router_tests.py exercises the production context bank,
+  registry and retail adapter using redirected calls/storage, including
+  lifecycle rollback, P1 restoration, per-player commands, input timing,
+  render-without-simulation, death withdrawal and retained shared-world changes.
+  It does not prove the original game's complete controller call graph.
+- Projection/frustum tests execute isolated retail arithmetic only.
+- Game is never launched by the agent. Runtime control/camera behavior, native
+  action outcomes and distant-region visibility still require user testing.
+- This is original-controller integration, not a claim that every singleton
+  in every mission/enemy/trigger routine has already been converted. Outside
+  scoped player calls, unadapted MechList consumers still see P1.
+- Black-zone loading/visibility is not established fixed by this migration.
+- Diagnostics identify CPLAYER-5 and record original-controller tick count and
+  health along with both player and secondary camera positions.
+
+CPLAYER-10-INTERACTIONS (2026-09-14)
+Initial gameplay interaction adapters, preserving native player controllers.
+
+Question marks (type 11): retail player collision chooses the actual collector,
+including its original range/action-state checks. Both TakeEffect call sites
+are wrapped. No nearest-player query substitutes the confirmed collector.
+New pending command entries receive that collector's generation-stamped handle.
+The existing pending executor enters the collector's player context once;
+linked commands inherit its owner, while shared commands retain shared meaning.
+A departed/recreated collector's queued action is skipped, never assigned to P1.
+Retail pickup consumption and one-shot node behavior remain original. Script
+messages produced in that context are recognized by the existing HUD adapter.
+This initial adapter covers the immediate pending list and linked commands in
+that pass. Other mission-specific delayed schedulers/tutorial modal behavior
+still need gameplay verification and separate adapters if they lose ownership.
+
+Regular enemies: original CThug and CCop AI vtable entries are routed. Each
+scheduled AI invocation chooses the nearest alive player with native LOS; if
+neither has LOS, it chooses an alive player for the original search behavior.
+Native AI still decides detection cone, range, suspicion, attack availability,
+pathing and animations. A newly closer eligible player can become the target.
+DistanceToPlayer's unowned cached distance is invalidated before routed AI.
+Original AI runs exactly once in the selected context; the shared enemy/world
+is never cloned or updated twice. Both cameras' display modes retain routing.
+No P2 joined: native enemy/pickup paths execute directly without these changes.
+This slice covers thugs and police guards, not every ordinary enemy archetype.
+Boss HP, alternating attacks and radial damage policies are not implemented.
+Persistent attack procedures/projectiles may retain the target chosen when
+created; this slice does not claim to retarget every attack already in flight.
+
+Files: coop_interactions.h, coop_interaction_runtime.h, main.cpp, coop_router.h.
+Diagnostics: interactions installed, pickup-script counts per owner, enemy AI
+counts per selected owner and rejected stale scripts in coop-diagnostics.log.
+Validation: VS6 build/link, DLL validator, 11 native co-op suites and both retail
+projection/frustum suites pass (13 total). New test compiles production runtime
+wrappers with controlled retail boundaries: both collectors, first consumption,
+linked ownership, no stale fallback, nearest/LOS retarget, one AI call and P1
+context restoration. Supported EXE and both pickup calls/enemy vtables checked.
+These tests do not establish live mission script or combat behavior. No game
+launch performed; previous isolated DLL is backed up before deployment.
+
+Manual test: join with 9, let P2 activate a question mark while P1 is elsewhere;
+repeat with P1 at another question mark. Check who receives player-specific
+animation/state/message effects. Approach a thug/police guard with P2, move P1
+closer with a clear line of sight, then obstruct one player's view. Check target
+choice, detection and subsequent attacks. Retain the diagnostics from this run.
+
+2026-09-30 Rhino shock isolation: the user confirms both players can still
+move and take damage after the first pole hit, while Rhino remains stalled
+and attack damage is immediately overwritten. The installed L4A1 trigger
+bank has no opcode-199 player traversal; the chase entry/handoff adapter is
+not a Rhino phase handler. Keep those systems separate.
+
+Retail GetShocked calls RunAnim(30,currentFrame,-1) on every update after its
+shock timer reaches zero (0047E4DE). RunAnim clears the fractional frame;
+UpdateFrame advances speed*delta/2. Repeated calls with a half-frame step
+therefore cannot finish the recovery animation. coop_rhino_runtime.h changes
+only that co-op call site: begin the one-shot once, then let native frame
+updates finish it. Rhino still owns the original shock timer, interpolated
+health, animation completion checks, vulnerability and state transitions.
+No scripted traversal, generic enemy retargeting or chase bank is changed.
+Singleplayer and a missing second participant retain the original call.
+
+The focused test reproduces the original stall then completes recovery with
+the adapter. validate_armor_rhino.py verifies the installed instructions at
+both the call and frame/reset routines. The full 33-case suite passes,
+including the unchanged crane and authored-motion regressions. This does
+not establish live Rhino recovery; retest the first shock, subsequent pole
+hits and defeat with both players. Logs and End captures now record Rhino's
+phase/substate, timer, HP, animation fraction/target and adapter counters.
+
+2026-09-30: LizMan native AI and deferred projectile collisions
+The user's chase/Rhino/Venom playtest reached L5A4. LizMan (type 317) used
+its own native AI vtable entry 0053B9B4 -> 00451350, omitted by the shared
+enemy routing adapter. It now uses the same living/visible player selector
+and one scoped native tick as ordinary enemies. Its native melee virtual Hit
+(0044D310/0044D340) consequently receives the selected player.
+Spit has a separate deferred collision path: it stores the legacy list pointer,
+so the later tick cannot inherit the shooting AI's temporary player context.
+coop_projectile_collision_runtime.h adapts the native player sphere query in
+Utils_CheckObjectCollision (004E64A2) and spit (004521EB). Only registered
+player-list queries in co-op enumerate both living, non-hidden participants;
+the nearest actual hit returns one native body/point with its collision scratch
+and GTE restored. Native movement, damage delivery and environment fallback
+are unchanged. Other lists and original singleplayer call retail directly.
+Logs/End capture include LizMan target and deferred player-hit counters.
+35 regression cases passed, including routed melee receiver, dead-player
+fallback, actual camera policy setters, native projectile query/point and scratch
+restoration. Installed EXE signatures and four L5A3/L5A4 camera release nodes
+were validated; native chase/Rhino/armor checks retained. No game launched.
+Runtime LizMan attacks/spit and sewer cinematic release remain user playtests.
+Rollback: isolated game binkw32-before-sewer-routing-20260930.dll is the build
+just tested by the user (SHA256 63688AC99B6452BC1714576FD2120315141E97D5939D101513F12A9487E2B72D).
+Original chase-only backup remains binkw32-before-rhino-armor-20260930-204855.dll.
+
+2026-10-01 playtest corrections
+-------------------------------
+Stop the Bomb L1A4 root 299 is an enemy activation pulse. Fall recognition
+previously walked through enemy type 305 to delayed Die nodes. It now follows
+only authored control actors (203), retaining all five real rooftop fall chains.
+Sewage Plant L5A6 hallway1_, hallway2_, tanks1_ and the L3A3 secret cabin's
+BUILD/GIRD/RBOX use independent terrain ownership. Pure pulse children are
+projected even when the native shared trigger latch has already fired. No
+enemy/reward/gate/script actions replay. Authored box visibility remembers its
+issuing player; either slot can enter a secret zone while the other stays outside.
+Simultaneously queued scene starts cannot put a hidden partner into an unticked
+synthesized route. The current owner completes one shared scene/handoff.
+Grab ownership is retained through native AI. Venom/lizard web, hit or destroyed
+grabber interruptions release the actual victim, restore Venom's hand-position
+callback and enter native release animation 172/state 0x800000. Dead victims are
+not revived. Enemy handles and player generations prevent freed-object reuse.
+Private target flag/position/radius/spin accompany P2's aim draw; P1's target
+flag no longer suppresses P2's diamond. Ground separation at control handoff
+requires native floor contact and an upright surface normal; ceiling/air entries
+retain the actor's known position and motion.
+Both players carry health/max health, armor/remaining armor health, webbing and
+cartridges through level/retry destruction. Zero/zero supply is explicitly applied
+after construction, avoiding retail default refill. Death alone resets that slot
+on checkpoint/next-level respawn to full HP/web, seven cartridges, no armor.
+The user's Venom START cursor maps to L5A1 node 71, not nodes 304/311. Its
+authored final RunSpideyTo(277) is followed by SnapSpideyTo(54), returning to its
+entry marker. Only that snap in the exact 88-word installed route uses exit 277;
+other snaps and other routes retain native behavior. This also applies in
+singleplayer. Co-op retains Inside01 during node 71 and the existing handoff
+moves the living partner to the completed actor. Manual END probes were after
+failure/another route and are not used as a destination.
+39 behavior cases and the DLL/native-boundary validators pass. No game launched.
+Pending live checks: bomb hallway, hostage spawn, either-player aim diamond,
+crane cabin entry/exit (one/both players), Venom traversal in SP/co-op, interrupted
+Venom/lizard grabs (including a dead partner), Sewage Plant separation and
+living/dead inventory across checkpoints and level changes.
+Deployed DLL SHA256: 739CB9D839B31DEE5C8C3842E9CE3C85DF012DC10CA4670E665F6BBA3EF89ACB
+Rollback: Spider-Man-decomp-baseline/binkw32-before-playtest-fixes-20261001-014606.dll
+Rollback SHA256: 1815A6BCAA4956C4F5B4DE49A1EE76596E11E68DA9F6D45D426D0BDC6917E89D
+
+
+2026-10-01 independent restraint recovery
+----------------------------------------
+Retail Venom installs both 004F0CA0 (hand hold) and 004F0D70 (symbiote/tug hold).
+The animation command can enter held state 0x20000000 on the next player tick,
+so a state-only transition observed within enemy AI missed ownership. Both
+callback installations now acquire a player-generation/enemy-handle lease.
+The callback remains protected during its valid native phase, including the
+interval before the held-state animation command runs. Interrupted callbacks
+restore the victim's own saved callback, rather than another player's value.
+Lease cleanup runs separately for both slots before unpaused native player
+updates, independent of whether the enemy is selected, active or destroyed.
+Expired leases no longer retain their old target. Living victims use native
+release animation/state; dead players are not revived, and synthesized routes
+are not forced into airborne gameplay. Entry/handoff state transfer rejects
+enemy restraint and dead actor states, preventing copied orphan holds.
+Regression reproduces missing delayed ownership against previous code and
+passes with the update. Full co-op suite and DLL/native instruction validation
+pass. Same-state simultaneous holds by different enemies, independent release,
+both Venom pin variants, no-enemy-tick cleanup, stale player lifetime and
+synthesized-state protection are covered. No game launched; live validation
+still needed for web-interrupted Venom/lizard grabs followed by the other
+player being grabbed, in both P1/P2 roles and with a dead partner.
+Deployed SHA256: 5021A15EC9DCFDA006FDB4ECEBC706896A7B0ABAEF1C4672657B64AFB65B41EE
+Rollback: binkw32-before-independent-grabs-20261001.dll
+Rollback SHA256: 739CB9D839B31DEE5C8C3842E9CE3C85DF012DC10CA4670E665F6BBA3EF89ACB
+
+
+2026-10-01 Venom damage eligibility after interrupted grabs
+-----------------------------------------------------------
+User verified grab recovery, but reports Venom no longer takes damage in L5A2.
+Native Hit (004EB83A-004EB843) rejects damage while enemy 218:4000 is set.
+Both hold callback installations set this bit; native normal exits clear it.
+Web interruption changes phase to 400 but only clears low flags (004EC233),
+so the co-op victim-only release left hold damage immunity stuck on Venom.
+Grab leases now retain their enemy-side hold flag and end it along with the
+victim state/callback. Living valid holds keep native immunity. If another
+valid lease still owns the same enemy, flag ownership transfers. Unrelated
+flags, unowned protections, native damage values, hit windows and singleplayer
+are unchanged. Enemy handles prevent access after grabber destruction.
+Regression fails against the previous build's production cleanup: victim
+recovers but audited native damage guard still rejects HP loss. It passes
+after the correction for both players and both hold callbacks. Full co-op
+behavior suite, retail instruction checks and DLL validation pass. End-key
+captures now include each grab lease and Venom HP/phase/combat flags/animation.
+No game launched. Retest native melee damage before/after holds, web staggering,
+interrupted grab recovery and fight completion; runtime result remains pending.
+Deployed SHA256: 41B636305144BA1826F0F8FD3CCA4EC88C8EB955C87A2CA4E2CCFF177EFAC794
+Rollback: binkw32-before-venom-damage-20261001.dll
+Rollback SHA256: 5021A15EC9DCFDA006FDB4ECEBC706896A7B0ABAEF1C4672657B64AFB65B41EE
+
+2026-10-01 Third Venom restraint and complete wrap release
+--------------------------------------------------------
+User reports web interruption still freezes P2 and prevents damage to Venom.
+The latest End capture (exit-20261001-083004-003BBAA6.txt) has P2 callback
+004F0A70, state 800000, animation 186; both leases are empty, Venom HP 500,
+phase 40 and combat flags 4028 (damage-block 4000 still set).
+Previous callback recognition omitted this third native restraint entirely.
+Native 004EEC31 installs 004F0A70, 004EEC1D sets damage-block 4000, and
+004EEC7C adds wrap rendering flags 4800. Native release restores callback,
+queues the retained wrap effect for deletion, clears the owned render flags,
+and uses animation 176 with airborne state 800000 (004EF139-004EF1C0).
+The shared grab lease now recognizes all three audited Venom callbacks,
+including wrap pinning independent of the player's apparent airborne state.
+Wrap lifetime/render flags are retained by the same ownership lease. Recovery
+queues only the retained effect with native Die, clears the verified pointer,
+restores the player's own callback and selects its native release animation.
+Only render flags introduced by that hold are cleared. Normal native release
+does not queue the effect twice or restart animation; dead players are not
+revived. No global invulnerability removal, forced HP edits or level overrides.
+Regression fails on missing wrap ownership against the deployed source and
+passes after the fix. Cases cover P1/P2 interruption before another enemy AI
+tick, captured airborne victim, native completion, death, pre-existing flags,
+all three pin variants and the previous independent grab protections.
+Live verification remains pending; do not treat fake retail-boundary tests
+as proof of the in-game outcome. No game process is launched for validation.
+
+Full co-op suite, retail release-instruction checks, diff check, VS6 build
+and DLL validator pass. Deployed isolated DLL only; game remains closed.
+Deployed SHA256: 962A3E07DDB29FCE1884CF2CA3818B63BD5C5EF0ADD354AFC6E052725AEC07D1
+Rollback: binkw32-before-venom-wrap-20261001.dll
+Rollback SHA256: 41B636305144BA1826F0F8FD3CCA4EC88C8EB955C87A2CA4E2CCFF177EFAC794
+
+2026-10-17 Late campaign terrain ownership extension
+--------------------------------------------------
+The same authored BF visibility commands that hid bank and sewer rooms occur
+throughout installed L7A1-L7A4 and L8A1-L8A3 trigger banks. Those seven levels
+previously fell outside the independent section router. Their collision owner
+could change visibility for both players while the other remained in a room.
+The existing shared-world, two-owner terrain union now accepts the installed
+room, hallway, ceiling, cable, warehouse and trench visibility names for those
+banks. The same collision-contact projection works when a command point's
+native shared latch has already fired. No script, actor, reward or gate command
+is replayed. Scene controls and their visual state remain shared: switches,
+trigger helpers, light-state pairs, boss stages, barriers, hazards, effects,
+difficulty variants and monitor images are outside the terrain profile.
+L6 and other banks without an audited two-way room/terrain section pattern
+continue their native behavior. The two reported Venom fixes are untouched.
+Profiles reset section ownership when the level name changes even if resource
+memory is reused at the same address. Diagnostics include the active profile.
+Fixture cases consume opposite visibility commands from each of the seven
+installed trigger banks in both player roles, including separation/reentry,
+non-terrain exclusions, view switches and recycled resource addresses.
+Game closed; live gameplay on these later levels remains to be checked.
+
+Installed bank regression suite, retail instruction validators, VS6 build,
+DLL validator and git diff check pass. Isolated copy only; no game launch.
+Deployed SHA256: 0DF0D0A72BED12BA48D1BA8DB0593B8CAD32BE9EB028179CC00D52A963EC7163
+Rollback: binkw32-before-late-sections-20261017.dll
+Rollback SHA256: 962A3E07DDB29FCE1884CF2CA3818B63BD5C5EF0ADD354AFC6E052725AEC07D1

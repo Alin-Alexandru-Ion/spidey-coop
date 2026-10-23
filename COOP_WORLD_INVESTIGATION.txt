@@ -1,0 +1,150 @@
+CPLAYER-47-SEWER-BOSS-OCCLUSION - 2026-09-24
+Implementation candidate; automated validation passes, gameplay retest pending.
+Game not launched by agent. Deploy only to Spider-Man-decomp-baseline.
+
+The post-Venom L5A3_T.trg bank contains BF visibility commands on nodes
+223/224 (room1_) and 225 (room2_). Their authored hide/show ranges include
+terrain and props. L5A3_G was outside the co-op section router, so a leading
+player's room transition could hide the stationary player's floor. Route these
+two exact groups through the existing per-player section ownership and collision
+contact path. The shared world still unloads a room once neither player needs it.
+Unrelated scripts and visibility groups keep retail behavior.
+
+Retail CCamera::Update (4174E3-4176A1) uses camera field_F9 to cast an
+obstruction ray from that camera toward its tripod, remembers up to eight
+blocking items in the camera's own list, and marks their render flag 0x800.
+Boss scripts set field_F9 on CameraList for P1, including Scorpion's render
+stage (455839-45588B) and another authored boss path (488778-4887C9).
+P2's separate native camera tick already contains the obstruction logic but
+did not receive the boss script's enable flag. In USER boss camera mode, mirror
+P1's field_F9 onto P2 before its native camera tick, so P2 chooses blockers
+from its own position. Diagnostics report both flags for manual verification.
+The original game uses shared item render bits, so the visual result and any
+cross-view interaction still require a P1/P2 gameplay check.
+
+Previous investigation follows:
+------------------------------
+CPLAYER-21-TERRAIN - 2026-09-18
+Implemented and deployed; live bank crossing verification pending.
+
+Evidence from CPLAYER-20 run: at t=1051631562, ticks=7717, P1=-4388,-96,3129
+and P2=-7569,-96,-1698, unowned section command count increased from 0 to 5.
+Letterbox became 30; hidden item count increased 29->58, with unchanged 301
+items and resource/grid hashes. Existing Command(owner=0) cleared BOTH player
+bits. Thus a shared script could discard previously protected terrain.
+
+Native 4DE8D0 sets command-point byte+4 on touch but tests shared byte+5 before
+enqueue. A second player is suppressed while that latch remains set, even on
+later frames. Recording ownership alone does not execute any visibility changes
+when no command is enqueued. Native reset/release is 4DE890/4DE8B0.
+
+Fix: global terrain visibility commands preserve participant masks; their hides
+apply only if neither player needs the item. Collision contact also projects
+leading BF section commands directly into the contacting player's requirements,
+independent of the shared latch. Decoder is bounded by the next node address and
+stops before other opcodes/unrelated names. Does not replay command lists or links.
+Original shared trigger invocation and fall interception remain intact.
+
+The named terrain resolver at 4E6A40/4C9230 was compared with our name/range/CRC
+resolver; no discrepancy found. Tests now consume actual L1A3 nodes including
+67/70 (five-command visibility batches), 68 and 71, and compile the production
+collision wrapper with a latched native-call fixture. Both role directions and
+release after both players leave pass. Other co-op suites and validators passed.
+
+Known scope: audited bank terrain groups only, not arbitrary script-controlled
+puzzle geometry or actual resource streaming across other levels. Exact screenshot
+location still requires user gameplay retest. Game not launched by agent.
+
+Previous investigation follows:
+------------------------------
+CPLAYER-7-SECTIONS - 2026-09-13
+Implemented fix candidate; live gameplay validation pending. Game not launched.
+
+New evidence from CPLAYER-6-TRACE manual test:
+The played level is L1A3_G, not L1A1_G assumed in the earlier asset inspection.
+At 636766265 P1 was stationary (-7543,-1705 XZ) and started falling.
+Objects near that location changed hidden bit 1 before-render:
+075316CC at (-7374,-431,-1705): 0000 -> 0001
+07533A4C at (-7512,-171,-1705): 0000 -> 0001
+0753400C at (-7150,0,-1705): 0000 -> 0001
+Object count remained 301. Grid hash remained 09465323.
+Later the same pattern occurred with P2 stationary. The accidental 9 respawn
+happened AFTER the useful failure interval and did not invalidate the trace.
+
+Confirmed authored section commands:
+L1A3_T.trg uses BF named visibility commands for Start_, First_, Second_, Third_,
+Fourth_, Fifth_, Sixth_, Seventh_, Eight_. These commands change bit 1, disabling
+both original rendering and collision. Do not alter unrelated names such as
+S_Floor, BlockRoom_, or gameplay trigger objects without separate review.
+
+Implementation:
+Verified collision call 452C19 -> Trig_TriggerCommandPoint records participant
+ownership even when retail deduplicates a shared command point.
+Verified pending execution call DE806 -> ExecuteCommandList provides ownership
+to named visibility calls; newly appended linked pulses inherit ownership.
+Verified Logic call 45551D clears ownership after original pending processing.
+Verified named visibility call E10E9 retains original name/range resolution.
+Matched group items keep a visibility requirement per player; final bit 1 is
+hidden only if neither requires them. Independent authored sections, no radius
+inflation and no global keep-loaded mode.
+Global/unowned commands retain shared-world authority. Commands outside the
+verified level/group names use original behavior.
+Joining seeds requirements from existing visibility. Respawn/rejoin copies
+P1's current requirements. Leaving co-op restores P1's requirement; KillAll
+drops tracked pointers before environment resources are freed.
+Single-player/split-off path has no section mediation.
+
+Validation:
+Production-header tests cover both role directions, both leaving, returning,
+drop-out/rejoin, shared command ownership, linked ownership, global overrides,
+and preservation of unrelated flags. Existing co-op suites also run.
+Actual hook behavior is still subject to manual gameplay verification.
+New log section: CPLAYER-7-SECTIONS, sections counters split by global/P1/P2/both.
+If section commands remain global-only during movement, investigate trigger
+ownership before expanding policy. Keep diagnostic evidence.
+
+Previous investigation follows:
+--------------------------------
+CPLAYER-6-TRACE - 2026-09-13
+Status: investigation build, NOT a confirmed fix for disappearing geometry.
+Do not launch automatically. Deploy only to Spider-Man-decomp-baseline.
+
+Observed in CPLAYER-5 diagnostics:
+Stationary P2 kept simulation ticks and health 100 while Y increased to 89903.
+Distance suspended list was empty; old finite visibility-box adapter tracked 0.
+Both roles reproduce the problem per the user. Models disappear as well as floors.
+
+Retail code traced:
+M3dZone_LineToItem (4549A0) queries a fixed spatial grid using query endpoints.
+M3dZone_SetZone (455060) is called by ProcessNewPSX, not each camera update.
+The grid is at 5FC640, size 660. It is not a moving P1-centered grid.
+Collision preprocess (46E7B0) excludes mFlags 1 or 20.
+Render culling (46FAD0) excludes mFlags 1 or 1000 and writes 8000.
+Therefore hidden flag 1 could explain both symptoms; its involvement in this
+failure has NOT yet been measured.
+Actual resource removal routes through ClearRegion (4CA7A0).
+First-level L1A1_T.trg named visibility commands found so far affect signs.
+The earlier box-visibility hook never engaged in the failing session.
+Do not broaden that hook, enlarge activation radius, or disable all culling
+without a concrete failing state transition.
+
+New passive diagnostics:
+Six phase snapshots: before/after P1 AI, after P2 AI plus original camera,
+before render, after P1 render, after P2 render.
+Count environment list entries, flag 1/20/1000/8000 separately.
+Record added, absent, hidden/collision/exclusion flag changes; bounded 128 events
+per log flush with dropped count. Never dereference absent historic pointers.
+Hash shared resource descriptors and collision grid; log resource filenames,
+usability and pointers, grid dimensions/bounds, per-player contact flags/state.
+Does not change object flags, activation, collision, simulation or rendering.
+Observer runs only with P2 joined; logfile flushed with existing 1-second report.
+Incomplete list/table scans are reported and bounded.
+
+Next manual test:
+New game, join with 9; leave one player stationary and move the other until
+models vanish. Wait about two seconds then exit with 0.
+Read latest CPLAYER-6-TRACE section in coop-diagnostics.log.
+Compare earliest world-change interval and resource/grid/count/flag transitions
+before falling. If no lifetime/visibility change occurs, follow per-view
+render/transform caches and original player collision query state instead.
+Do not describe this build as an activation fix.

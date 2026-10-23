@@ -1,0 +1,314 @@
+Helicopter chase audit (CPLAYER-30-CHASE-CAMERA, 2026-09-23)
+
+Source of truth: installed data.pkr trigger banks, retail SpideyPC.exe command
+decoder and CCamera methods, CoOp_SectionExecute/actor wrappers, and the
+CPLAYER-28/29 diagnostics. Run tests/coop/validate_chase_banks.py to check
+the bank graph and authored camera node identities against the installed game.
+
+Bank graph and authored fixed-camera nodes:
+  L3A1_T  -> L3A1a_T (branch) or L3A2_T; nodes 63,67,87,95
+  L3A1a_T -> L3A2_T; nodes 51,55,68,69
+  L3A2_T  -> L3A3_T; nodes 7,11,437,438; checkpoint node 355
+  L3A3_T  -> L3A4_T; nodes 28,32
+  L3A4_T  -> L3A5_T; nodes 7,11,74,88
+  L3A5_T  -> L4A1_T (next regular bank); nodes 6,10,17,19
+Every chase bank contains its own autoexec and restart node. The camera nodes
+use opcode 186 except L3A1a nodes 68/69, which use 185. Opcode 185 calls
+CCamera::SetFixedPosMode (mode 4); 186 calls SetFixedPosAnglesMode (mode 5).
+Opcode 188, when used, calls SetFixedFocusMode (mode 6). These are event
+directives, not a blanket camera mode for L3A2 or the entire chase. The
+normal follow mode observed in both P1 and P2 gameplay snapshots is 3.
+
+Retail Trig_ExecuteRestart places the single MechList CPlayer at the bank's
+restart-node position/orientation, then executes that node's commands.
+Trig_ExecuteAutoexec runs each bank's authored setup commands. The co-op
+layer does not instantiate P2 from a second authored restart: it constructs
+an independent retail CPlayer/CCamera after the native P1 exists, once the
+camera is back in playable mode 3 (or boss mode 16), letterbox/pause are off,
+and a 350 ms settling gate plus rear-footprint floor probe succeed. This is
+why a chase bank can load before P2 appears. A failed rear probe is retried;
+the new diagnostics distinguish that from missing model or camera resources.
+
+The native level-change opcode is 305. Co-op runs a P2-triggered level change
+in the shared world context and reconstructs both player/camera slots after
+the new bank loads. A private P2 context must never be restored over a new
+bank's resource pointers. P2 is deliberately joined after authored
+letterboxing and only after a supported rear-footprint floor/clearance probe.
+The CPLAYER-28 log reached L3A3 with both player/camera slots, including a
+P2-initiated L3A2->L3A3 handoff. In L3A2 it recorded 37 unsuccessful spawn
+attempts before P2 joined; that log did not record failure reasons. It did
+not reach L3A4, L3A5 or L4A1. Those transitions are asset/code audited,
+not live verified. The new log records the spawn failure reason for retest.
+
+CPLAYER-29's installer had four chase vtable addresses offset by 0x400. Its
+log says interactions: installed=0. Because the installer also owned the P2
+camera update call, the second camera was constructed in mode 3 but never
+ticked. CPLAYER-30 corrects the verified retail addresses and installs the
+camera tick independently of AI/pickup guards. The bank-wide rotation copy
+has been removed. P2 retains its native CCamera tripod and follows its own
+player in ordinary chase gameplay.
+
+Authored camera/scene commands are routed through CoOp_SectionExecute's
+participant owner. Chopper, sniper target, searchlight and missile AI can
+queue later trigger pulses outside a command list. Their wrappers now stamp
+newly queued pulses with the living player selected for that actor's single
+native AI tick, so later camera and gameplay commands run in that player's
+context. Opcode 305 remains a shared level change. No command is replayed
+twice. New diagnostics report independent camera update calls, mode changes,
+authored camera command ownership, actor-generated pulses and spawn failures.
+
+Manual verification needed in the isolated test copy: P2 follows normally at
+L3A1 entry; each player independently triggers fixed-camera building events;
+P2's chase reticles/searchlight appear; P2 can cross L3A1a/L3A2/L3A3/L3A4/
+L3A5 into L4A1; repeat L3A3->L3A4 with P1 waiting/dead. Preserve the log if
+a camera command is unowned, a spawn is deferred, or a bank transition stops.
+The current code and asset audit alone cannot confirm those visual/runtime
+outcomes or explain the earlier shield/dome explosion artifact.
+
+CPLAYER-31 follow-up (2026-09-23): The latest playthrough reached L3A2,
+L3A4, Rhino and Venom. The retail render loop calls virtual slot 5 for
+searchlight (322), sniper (323) and missile (321) actors after its ordinary
+actor list renderer. The P2 pass previously replayed only those ordinary
+lists, so it could not show the special searchlight and targeting art. P2 now
+replays exactly those callbacks under its own camera and viewport; the new
+"chase-special-draws" diagnostic reports each actor type. The shield/dome
+explosion artifact and full-screen dimming still require live verification.
+
+At the L3A4 crane interaction, the log showed P2's authored camera node 88
+and mode 5, P1 in mode 3, letterbox 30, cinematic owner P1, and P2 ticks
+stalled while P1 moved. That combination is now recognized as the interactive
+P2 crane scene, so P2 can tick with its own buttons and becomes presentation
+owner. This is limited to L3A4's node 88. Other P2 cinematics still receive
+neutral controls. Confirm the native QTE actually advances with P2 buttons.
+
+Rhino and Venom native AI slots are guarded against the installed executable
+and now receive one co-op-selected player context per shared AI tick. Rhino
+uses the nearest living visible player. Venom's chase uses the living player
+nearest Venom, even through occlusion; this is an approximation of the lead
+runner, not an authored route-distance calculation. L5A1's "You Lost Venom"
+failure entry node 330 is deferred before its four linked commands run if its
+triggering player trails the other live runner by this measure. The installed
+trigger bank confirms node 330 links to failure command 316, a camera command,
+and two actor events. A guard on command 316 also catches direct pulses.
+Diagnostics count boss targets and deferred failures.
+The separate Rhino electrical device remains to be identified; no unverified
+damage hook was added. Manual play through L3A2/L3A4, Rhino and L5A1 is
+needed before considering these runtime behaviors confirmed.
+L3A2 still has no recorded owned camera directive in the current log, so a
+camera rotation change there would be speculative. The next log includes both
+view angles, body yaw, camera yaw and surface state to distinguish an authored
+camera setup from the P2 camera's normal follow rotation.
+
+CPLAYER-34 follow-up (2026-09-23): Player testing confirmed the chase effects
+on P2 but found that chopper shots still could not hurt P2. Retail
+CMachineGunBullet::Move reads MechList itself after the chopper's AI tick, so
+selecting P2 in the chopper AI alone did not route the later collision. The
+guarded bullet Move vtable hook now executes exactly one native Move under the
+living player closest to the projectile's current endpoint. Missile Explode
+is called inside the already-routed missile AI; no second explosion was added.
+Unit and retail-vtable checks pass; live damage is awaiting a playthrough.
+
+The L3A4 crane still failed in the reported playthrough despite P2's node 88
+camera and active P2 tick. The native scene input consumer is not established,
+so this build only adds cumulative interactive-scene tick/press diagnostics
+(`chase-hit-routing`); it does not claim the QTE is fixed. The latest Venom
+race log shows P1 had 0 HP and was already in the co-op waiting pane before
+P2's later route failure; the authored loss-node guard counters remained 0.
+L5A1 has separate Inside/Outside visibility groups. Those named groups now
+use the two-player visibility union, and the Venom progress callback receives
+the same player context as its latest AI tick so the Spidey marker follows
+the selected runner. Nearest-to-Venom remains an approximation; completing
+the authored building route and checkpoint logic still needs live validation.
+
+CPLAYER-35 follow-up (2026-09-23): The L3A2 chase transition log records 36
+failed P2 join attempts with spawn reason 3 while P1 is airborne. P2 joins
+immediately after P1 reaches the nearby ledge. The join probe previously
+returned as soon as it found no floor directly under P1, before examining
+other positions. Chase banks now retain the normal behind-P1 placement first,
+then search nearby supported ledges at different heights when that placement
+fails. Each candidate must have footprint support and clear body space; if no
+safe candidate exists, P2 stays pending and retries rather than spawning in
+open air. The selected strategy is logged on the join line (1 normal, 2 ledge).
+The spawn/unit and retail-adapter tests pass, as does the release DLL validator.
+Live L3A2 traversal remains to be checked in the isolated game installation.
+
+CPLAYER-36 follow-up (2026-09-23): The latest live log showed that the ledge
+fallback still left P2 pending for several chase spawn attempts. Chase joins
+now construct P2 at P1's exact current spawn coordinate, inherit P1 velocity,
+and select a small sideways offset only when the native floor and clearance
+queries confirm support across the body footprint. When no side is safe, P2
+joins at the authored coordinate immediately; the P2 tick retries nearby
+side separation briefly as collision becomes available. This avoids making
+P1 landing on a ledge a prerequisite for P2 to exist. It still needs a live
+test at airborne/wall-attached chase starts to confirm P2 remains playable.
+
+L5A1's installed trigger bank shows node 304/311 begins the native
+SwitchToSynthesizedInput window route (opcode 199). The co-op wrapper runs
+that same command under the collision owner, so P2 already receives the
+authored motion. The preceding node 45 contains a TRGP_Wait visibility
+command before its Inside01 release; the old contact scanner stopped at the
+first unfamiliar group and could miss the Inside release. The scanner now
+continues through leading visibility commands, and a P2-owned window route
+retains Inside01 in the shared world until its authored ownership commands
+release it. This addresses the missing interior geometry during P2's route,
+but the exact exit remains live-unverified.
+
+L5A2 Venom's native grab phase 0x100 drives the victim via MechList on later
+AI ticks. Nearest-player routing could swap MechList during that phase,
+stranding the first victim in the grabbed animation. The wrapper now holds
+the same victim through the grab phase and releases the latch afterward;
+both P1 and P2 victim cases pass the native-call routing test. Live release
+timing and animation still need player verification. The VS6 DLL build/link,
+Tobey validator, 23 co-op tests, and chase/Venom asset checks pass. No game
+process was launched.
+
+CPLAYER-37 follow-up (2026-09-24): P2's normal CPlayer constructor cannot
+replay an authored P1-only entry animation safely. It now waits until P1's
+native synthesized-input flag (CPlayer +0x1AC) clears, in addition to the
+existing letterbox, pause and camera-mode gates. Retail sets that flag when
+SwitchToSynthesizedInput starts and clears it when player control resumes.
+The existing 350 ms settle delay then applies before P2 joins. This uses the
+control-handoff fallback rather than attempting to copy an in-progress P1
+script/animation into P2. A chase save still needs a live test to confirm the
+exact handoff frame and that P2 remains on supported collision.
+
+CPLAYER-38 scripted-motion handoff (2026-09-24): Native opcode 199 calls
+CPlayer::SwitchToSynthesizedInput on the current MechList and stores a route
+cursor in that actual CPlayer. The co-op script state now keeps the triggering
+player as the motion actor until its native synthesized-input flag clears.
+P2's body tick moved from P1's AI callback to the shared player-list boundary,
+so a waiting P1 cannot stop P2. A letterbox pulse no longer suppresses an
+ongoing P2 native route. The other live player shadows the actor in the loaded
+region and is hidden from rendering and regular enemy selection during that
+route; after native control returns, a
+native floor/clearance probe places it beside the actor. A dead partner stays
+waiting. Co-op level openings now construct P2 invisibly at the authored P1
+position, shadow P1's transform, and release P2 only at a supported side when
+P1 regains normal control. Separate P2 web meter/cartridge state survives
+native level transitions through the same constructor inventory fields as P1;
+native health initialization remains in charge of health reset.
+
+Diagnostics now log script owner, route cursor, native active flag/timer,
+body position and stalled ticks. VS6 build, validator and co-op tests pass.
+This is a runtime candidate, not a verified Venom exit fix: the next live
+test must establish that P2's actual body reaches the exit, not only that the
+camera/animation and command cursor advance. Other authored script mechanisms
+still need classification against this lifecycle.
+
+2026-09-29 crane follow-up: The latest live diagnostics show P2 button
+presses and body ticks during L3A4 node 88, including while P1 is waiting.
+They do not establish that the native quick-time interaction consumes those
+buttons. A later stuck state has P2 at zero HP but still registered as the
+cinematic owner; letterbox 30 then blocks P1's recovery. Co-op now considers
+a cinematic owner live only while its player has health and is not waiting,
+and clears that dead owner's shared letterbox at the camera update boundary.
+This removes the observed stale-owner recovery lock; the crane interaction
+still needs a live retest and its native input/transition consumer is not yet
+verified.
+
+Single-player capture: Press PageDown before an authored motion and PageUp
+after control returns. The game appends paired START, END and DELTA records
+to script-locations.log beside SpideyPC.exe. Each record includes the level,
+native fixed-point player coordinates, world-unit coordinates, yaw, health,
+native route state, camera mode and letterbox. The capture keys are disabled
+for co-op and during pause; they do not change the player's normal controls.
+
+2026-09-29 L3A4 stalled-route fallback: A newer exit snapshot caught the
+crane route on node 158 with native input still active after 1,033 actor
+ticks, including 602 ticks at the same position and route cursor. L3A4's
+bank has an authored opcode-305 transition at node 156 to L3A5_T. In co-op,
+only when the living scripted owner is in this L3A4 route with node 88's
+camera and the route has remained stationary for 90 ticks after at least
+120 motion ticks, the layer queues node 156 once with the same participant
+owner. This skips the failed crane interaction via the game's own next-bank
+command, including its existing P1-waiting level-change handling. Native
+completion remains untouched when the route progresses normally. Live play
+must confirm that the transition reaches L3A5 and restores both participants.
+The End-key BMP had failed because the hybrid DLL's local DirectDraw globals
+were null; capture now queries the retail Direct3D device's render target.
+
+2026-09-30 crane dispatch completion: exit-20260930-122601-000A029F.txt
+and its successful BMP show P2 dead, P1 awaiting fall recovery, no active
+script owner, and letterbox 30 still blocking recovery. The preceding log
+shows P2's crane route continuously falling (Y -9915 to 3226), not stalling.
+It dies before the stationary-route fallback can run; auto-exits remains 0.
+
+The stationary fallback is replaced by automatic completion at the exact
+L3A4 node 158 input-command dispatch. Before starting that broken motion,
+the layer checks the installed bank, registered command pointers, complete
+node 158 route signature and node 156's native opcode-305 L3A5_T command.
+It dispatches the original exit once as a shared-world action, retaining the
+living collector (or the survivor for an unowned/dead-owner pulse). It never
+enters a secondary context around the level load. Singleplayer still executes
+the original crane interaction. This is an intentional co-op bypass, not a
+claim that the crane's native quick-time input consumer has been repaired.
+
+Dead cinematic cleanup now clears the letterbox before discarding its owner;
+the scripted-motion death branch also clears an already unowned scene latch.
+End captures and regular diagnostics include the automatic-exit count/owner.
+Regression tests execute the production dispatcher against actual installed
+crane bytes for P1/P2, either partner dead, duplicate pulses and singleplayer;
+the existing life test covers dead-P1 revival at the next level checkpoint.
+Build, asset validation and static tests cannot prove the actual native L3A5
+load or restored control. Live crane completion still requires a playthrough.
+
+2026-09-30 post-crane arrival handoff: exit-20260930-133730-004B7439.txt
+and its BMP confirm that L3A5_G was loaded and the automatic exit ran once.
+The log then shows P1's opening synthesized motion falling below the level,
+losing health and entering recovery with no safe position. P2 remains in
+its hidden initial-spawn shadow, following P1 rather than gaining control.
+This is a failure after the bank load, not evidence of a missing bank load.
+
+Retail's L3A5 node 22 route sets CutSceneSkipSnapPos to node 26, whose link
+to node 242 provides the native handoff facing/surface state. The synthesized
+input engine responds to global skip byte 0060CFC4 by ending its pending
+controls and snapping to that marker. The shared frame then calls 004BC020
+to reset movement, stand animation and the camera and consume the skip flag.
+The co-op automatic crane completion now keeps a pending arrival across the
+load, verifies that exact installed route and destination link, waits for
+the real P1 route to initialize its skip marker, and requests this native
+skip. It leaves the flag set through the shared frame so other native scene
+participants also finish. P2 stays hidden until native control handoff and
+then uses the existing supported-side placement/release. Singleplayer and
+unrelated routes do not request this automatic skip.
+
+The regression harness checks initialization order, P1-only request, bank
+and route validation, shared-frame flag consumption and one completion.
+These tests simulate the retail frame's flag consumption; they do not prove
+the native teleport/camera routine executes correctly in game. Retest the
+crane with either player triggering it, including a waiting/dead partner,
+and verify actual supported arrival and restored control for both players.
+
+2026-09-30 native entry-state handoff: the former hidden-P2 release required
+a floor and forced Stand, even when retail handed P1 control while crawling
+or airborne. The first construction attempt is now immediate when the
+native player/camera exist; only failed allocations use the retry interval.
+During an authored opening the hidden participant follows the actor's real
+animation frame, fractional frame, position, orientation and velocity.
+
+Level-entry and later scripted-motion releases use the same audited native
+motion transfer. They preserve surface normals/basis, contact packets,
+motion state/counters, velocity/acceleration, animation phase and camera
+tuning. The recipient keeps its inventory, health, controller, costume/pose
+allocations, target ownership and command allocations. Swing ropes and
+look-around paths are separately constructed/copied rather than shared.
+Retail's one-time floor/camera initialization flags follow the actor so the
+recipient does not reset a valid crawling or airborne handoff to standing.
+
+Control release waits for the actor's synthesized commands and letterbox,
+not a standing animation, a floor probe or a particular camera mode. Ground
+entries retain the checked rear placement; attached/airborne entries retain
+the actor's known-valid origin if separation cannot be proved. This can
+initially overlap the bodies but allows independent native control without
+waiting for P1 to land. Later scripted handoffs support either event owner
+and release after pending scripts/camera/skip cleanup have finished, using
+the completed native exit transform. Dead/waiting partners are not revived
+by this transfer. End captures now include animation phase, surface normal,
+initialization flags and owned path/rope addresses for each participant.
+
+Regression tests cover ground/jump/fall/zip/swing and ceiling state transfer,
+private ownership and allocation rollback, both script owners, a late native
+exit-position update, no-floor release and dead/waiting/bank-change cleanup.
+These are static/native-boundary simulations, not live gameplay proof.
+Retest an airborne or crawling level opening and a P2-owned building route
+and verify both players gain control at the native handoff/actual exit.

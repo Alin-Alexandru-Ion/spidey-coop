@@ -1,0 +1,618 @@
+CPLAYER-25-SCORPION (current build)
+===============================
+Scorpion's explicit player-target phase now selects the nearest viable player,
+updates the boss's stored handle, and runs one original AI tick in that player's
+retail context. This aligns tail/hit routines that read MechList with the actual
+target. Jonah/hostage and introductory states remain on their authored path.
+
+The native boss-health renderer still runs once. In co-op its captured bars are
+centered across the full screen at the bottom; a second protected-character
+bar, such as JJJ's, is placed immediately above the boss bar. Personal HP bars
+remain in their own panes. The diagnostic log records boss target and HUD layout
+state for live verification. Singleplayer keeps the original HUD/AI behavior.
+
+Validation: 20 behavioral suites including Scorpion target routing and two-bar
+layout, projection/frustum, VS6 release build/link and DLL validator. Live
+Scorpion damage and visual placement still require manual gameplay testing.
+
+CPLAYER-24-MISSION (previous build)
+===============================
+Scorpion is regular co-op gameplay under the retail USER camera mode (16).
+The P2 spawn gate now permits that mode after the cinematic, with the existing
+pause, letterbox, safe-floor and clearance checks. The prior gate waited for
+mode 3, which only returned after Scorpion's defeat in the recorded playthrough.
+
+Collision-triggered scripts in all levels now retain the player that queued
+them. This extends the existing question-mark ownership through the helicopter
+chase without executing the same mission action twice. The terrain-specific
+visibility projection remains limited to the verified L1A3 bank.
+
+P2's render pass now draws the retail ControlBaddyList (0x56E994), which owns
+the helicopter chase's sniper target and searchlight. Its original special
+renderers receive P2's camera and viewport. Diagnostics record the control list
+size and queued collision scripts for each player to aid the live retest.
+
+Validation: 20 behavioral suites, projection/frustum, supported-EXE life hooks,
+VS6 release build/link and DLL validator passed. Game not launched; retest the
+Scorpion entrance, then advance the helicopter chase using P2 and inspect the
+target/searchlight/sniper visuals in both panes. Preserve coop-diagnostics.log
+if a chase visual or trigger still differs from P1.
+
+CPLAYER-22-REILLY (earlier build)
+===============================
+P2 jump now drives native X and its PC alias; web drives Triangle and its alias.
+The old mapping had these actions reversed. Existing named bindings are retained:
+this installation currently has JUMP=O and WEB=Num5; restore defaults in CO-OP
+CONFIGURATION for Num1 jump. Other P2 bindings are unchanged.
+
+End (dedicated End, not numpad 1) is emergency quit. Comma cycles camera/split
+modes. Top-row 0 and 6 no longer perform these utility actions and can be bound.
+The configuration page reserves End/comma and excludes them from P2 bindings.
+
+Gameplay P2 loads the installed spReilly.psx model through native Spool_PSX.
+CurrentSuit=8 and high-detail suit lookup are isolated in P2's context during
+construction and updates; P1's suit/detail settings are restored on return.
+The old registry test requiring both players to use the same model region is
+removed: player/level lifetime remains controlled by the registry and KillAll.
+Shared suit texture swapping is still suppressed for P2. Separate model assets
+remain under the game's normal level resource teardown.
+
+Validation: all 20 behavioral suites, separate jump/web inputs, reserved key
+handling, different player model regions, private suit lookup and P1 restoration,
+projection/frustum, VS6 compile/link and DLL validation passed. Ben Reilly asset
+confirmed in installed archive. No gameplay launch; live appearance/action test
+is still needed. Prior CPLAYER-21 terrain changes are retained.
+
+Previous build notes:
+
+CPLAYER-21-TERRAIN (previous build)
+================================
+Bank L1A3 terrain: retain independent player section requirements through shared
+cinematic visibility commands. Unowned section hides no longer clear both
+participants' requirements. Shared shows still display authored scenery without
+permanently adding a player requirement.
+
+Collision contact projects ONLY leading named terrain visibility commands to
+that player, even when the original shared command-point latch suppresses script
+execution. Linked pulses, enemies, rewards, doors and scenes still execute with
+original shared semantics. Scope is the bank's verified Start_/First_ through
+Eight_ terrain groups; this is not a whole-level keep-loaded mode or radius
+increase. A section can hide once neither player's section state requires it.
+Singleplayer remains native; camera visibility does not control participation.
+
+Verified: actual installed bank script fixtures, production collision wrapper
+with suppressed native trigger, both player directions, shared cinematic hides,
+release/return, unrelated flags, singleplayer and existing fall interception.
+All 20 behavioral suites plus projection/frustum, native hook checks, VS6 release
+build/link and DLL validation passed. No live gameplay validation or game launch.
+
+Retest the photographed bank crossing with P2 stationary, then reverse roles.
+Advance through the cinematic/next section, return, and bring both players ahead.
+Check floor collision AND visible terrain in both split orientations. Diagnostics
+identify CPLAYER-21-TERRAIN and log independent section-contact counts. If terrain
+still disappears, preserve coop-diagnostics.log before another play session.
+
+Previous build notes:
+
+CPLAYER-20-AIM (previous build)
+============================
+Local aiming no longer publishes its native lookaround letterbox/HUD offset as a
+shared cinematic. The player retains native aim transition timers and its own
+camera, while both views and the other player's simulation remain enabled.
+A resolved authored cinematic owner still retains shared cinematic presentation;
+singleplayer follows the original behavior. Narrow-view shoulder recentering is
+skipped while aiming, to keep the native aim ray and camera aligned.
+
+Both native lookaround reticles now run with the camera actually rendered for
+that pane and the same corrected RTPS projection used by per-view world effects.
+This supplies the pane's focal length and optical center before native reticle
+art is captured and replayed within the owning viewport. Camera, GTE and render
+matrix scratch are restored afterward. Native targeting and reticle enable flags
+remain authoritative; diagnostics now record each player's aim/reticle flags.
+
+Validation: 20 behavioral suites, including both roles' aim presentation,
+authored-scene/singleplayer preservation, shoulder adjustment bypass, and both
+reticle projection centers in horizontal/vertical layouts with scratch restore.
+Native projection/frustum suites passed. Release compile/link and DLL validator
+passed. No game launch or live visual check performed.
+
+Manual check: aim with P1 while P2 moves, then reverse roles; aim simultaneously.
+Repeat in vertical/horizontal layouts, release aim and pause/unpause. Verify the
+reticle follows the aimed point in each pane and a question-mark cinematic still
+returns normally. Keep coop-diagnostics.log if the reticle remains missing.
+
+Previous build notes:
+
+CPLAYER-19-SECTION-OWNER
+======================================
+Co-op starts from CO-OP > NEW GAME / CONTINUE and persists through level/retry.
+Removed top-row 8 drop-out and 9 join/reposition gameplay handlers. These keys
+can now be assigned as ordinary P2 bindings. 0 emergency exit and 6 camera-view
+cycling remain. Hidden camera views still retain their player/world requirements.
+
+Fixed a section-ownership gap in question-mark and delayed cinematic execution.
+The script dispatcher knew the scene owner, but section visibility commands had
+no collision-node owner mask and were treated as global changes affecting both
+players. They now inherit the resolved collector/cinematic owner when there is
+no explicit collision mask. Linked pulses inherit the same mask. Native unowned
+world initialization stays global; sections still unload after both release them.
+
+Latest L1A3 diagnostics showed five global section changes during a cinematic,
+followed by the trailing player falling with no new owned section commands. This
+fix addresses that demonstrated routing gap; runtime confirmation is still needed
+and it does not claim all other missions' unloading scripts have been audited.
+
+Validation: VS6 release compile/link and DLL validator; all 20 behavioral suites,
+including both roles through real script dispatch plus section union for initial,
+linked and delayed cinematic hides, unload after both release, and restoration of
+enclosing ownership. Keyboard mapper has no join/drop request or 8/9 polling.
+Menu/session startup/retry tests pass. Game not launched.
+
+Retest the same path: leave either player behind, advance the other through the
+question-mark/cinematic and section threshold, then reverse roles. Check 8/9 do
+not remove/place P2. Previous DLL and diagnostic log are backed up at deployment.
+
+Previous build notes:
+
+CPLAYER-18-FALL-TRIGGERS
+======================================
+Fixes the reported first-rooftop fall bypass in CPLAYER-17-LIFE. The previous
+hooks missed ExecuteCommandList's Die opcode (152) at 4E147B, which calls
+SwitchToDeathMode(true) and immediately requests the restart screen.
+
+First-rooftop death collision points pulse a linked sequence of command points,
+camera changes and scripted actors before Die. Co-op now recognizes pure pulse
+chains leading to an explicit native Die command and handles them at collision
+time using the colliding player's identity. It charges 25% maximum HP and queues
+safe recovery before any of that death sequence is enqueued. Shared trigger state
+is not consumed, so both players can hit the same region independently.
+
+Traversal is bounded and follows typed node links, not arbitrary matching words.
+Ordinary question-mark scenes and level transitions keep their native behavior.
+The missed script Die call is also hooked as fallback; it releases the terminal
+scene's scripted-control latch/letterbox to avoid trapping pending recovery.
+Unsupported or more complex authored chains are not all classified; further
+mission-specific testing remains necessary. Singleplayer passes through unchanged.
+
+Validation: 20 VS6 behavioral suites, including production runtime traversal and
+collision mediation using metadata extracted read-only from the installed first
+level. All five rooftop fall regions pass for either player and simultaneous
+shared-trigger use, repeat contact and safe recovery. Native executable audit
+checks all four direct death-mode callers and the collision hook, not only a
+hand-selected subset. Release compile/link and DLL validator passed.
+
+No game launch/live gameplay test. Retest stepping off the first rooftop as P2,
+then P1: each should lose 25 HP and recover without the death cinematic/restart.
+Continue to four falls and checkpoint revival, then test both players dead.
+Diagnostic build tag is CPLAYER-18-FALL-TRIGGERS; fall-triggers logs per-player
+interceptions. Previous failed-run diagnostics are preserved at deployment.
+
+Previous build notes:
+
+CPLAYER-17-LIFE
+===============================
+Co-op: each fall costs one quarter of maximum health (rounded up). Recover at a
+recent supported position, or behind the surviving partner if that floor is no
+longer available. Recovery waits for safe floor rather than placing in a void.
+Four falls from full health exhaust the falling player's HP.
+
+Either player's depleted HP retains their CPlayer/camera slot, stops their input,
+and presents a black pane labeled P1/P2 and Waiting for checkpoint respawn.
+The configured split is restored if a single-camera view was selected. The dead
+pane remains present during cinematics. The original restart/game-over is allowed
+only when both players are dead. Ordinary singleplayer death is unchanged.
+
+The survivor advancing to a changed native restart checkpoint or a later authored
+Start_/First_/Second_/.../Eight_ section queues revival near the survivor, at full
+health. Earlier sections and global startup visibility do not revive anyone.
+Revival waits during pause/cinematics and while no supported spawn is available.
+Top-row 8/9 cannot drop/recreate a player while either is dead to bypass waiting.
+Mission-specific failure scripts remain intact; arbitrary unnamed segment scripts
+have not all been classified as checkpoints.
+
+Validation: VS6 release compile/link, DLL validator, 20 production-header suites,
+retail hook-byte checks, native projection and frustum tests. Tests cover both
+player roles, repeated fall/death notifications, four falls, deferred checkpoint
+revival, pause/cinematics, both-dead restart gating, waiting HUD/state restoration,
+and shared math-register preservation. No game launch or visual gameplay test.
+
+Manual test: four falls as P1 while P2 stays alive, advance P2 to the next section,
+then repeat with roles reversed. Check combat depletion, both-player death/retry,
+both split orientations, camera cycling, pause and a question-mark cinematic.
+Life state and checkpoint/section progress are included in coop-diagnostics.log.
+
+Previous build notes:
+
+CPLAYER-16-SAFE-JOIN
+=================================
+P2 spawns directly behind P1's current horizontal facing, rather than on a fixed
+world X axis. Preferred spacing is 64 units; if blocked, try 48, 32, then 16 units
+along the same rear line. There is no sideways/front fallback. The body retains
+P1's root-to-floor clearance with a small 12-unit upward lift.
+
+The native ground and line-of-sight queries require nearby supporting floor,
+check four additional footprint samples, and check the path/body clearance.
+Unsupported, large-drop or blocked candidates defer the join instead of spawning
+into a wall or void. Existing P2 survives a failed reposition attempt.
+
+Automatic startup/retry and top-row 9 both wait for 350 ms with no pause or
+letterbox and with the native follow camera (mode 3). A renewed cinematic resets
+this delay. The candidate is calculated at spawn time using P1's latest position.
+Pending requests retry no more than once per 350 ms. Top-row 8 cancels them.
+
+Validation: VS6 release build/link, DLL validator, 18 production-header suites
+including rear spawn and settling-gate cases. Prior camera/projection suites
+remain covered by the previous build; no rendering changes in this build.
+The game remains closed. First-level opening spawn and narrow-roof behavior need
+manual gameplay verification; ray samples are not a full capsule collision solver.
+
+Previous build notes:
+
+CPLAYER-15-MENU-CAMERA
+=================================
+SINGLEPLAYER and CO-OP are the first two entries, in that order on the left.
+Both open Continue / New Game / Back; Continue uses the original active-save
+availability. All other original main-menu entries retain their positions.
+Co-op session startup, default split orientation and retry rejoin are retained.
+
+The co-op submenu displays two native CDummy shell actors (not gameplay players).
+The second starts one third into its own animation and then updates independently.
+It is offset 120 units sideways and 130 units farther from the menu camera.
+Both remain visible while selecting Back or hovering unavailable Continue.
+The partner is destroyed before shell resource cleanup on every page exit.
+
+Ceiling camera regression: runtime logs showed P1 authored tuning 370/-700
+while P2 retained 800/100 after early auto-join. The prior fix only inherited
+presets at construction. The script SetSpideyCamValue hook now forwards later
+authored tuning changes into the other player's own camera context, retaining
+native transition duration and immediate-application rules. Updates from either
+player are supported; queued changes survive until P2 exists and are consumed
+once. Level cleanup clears pending settings. Direct cinematic camera commands
+remain on their existing owner route; neither camera's live position is copied.
+
+Validation: release build/link, DLL validator, retail hook operand verification
+and 19 isolated native suites. New tests cover menu hierarchy, preview phase,
+independent update/cleanup and camera tuning before/after join in both directions.
+The game is left closed. Menu composition and ceiling behavior require an in-game
+check; automated tests do not prove the visual result.
+
+Previous build notes:
+
+CPLAYER-14-MENU
+=================================
+Main menu now includes CO-OP GAME. Its submenu has Continue, New Game and Back.
+Continue uses the existing active save slot and the original availability gate;
+New Game returns the original shell action (including difficulty/save handling).
+All eight original main-menu actions remain available in the expanded layout.
+Keyboard/controller menu navigation and mouse selection use the native input
+and hit-test functions. Escape returns from the co-op submenu. Entry input must
+be released before confirming a choice on the next page.
+
+Choosing co-op Continue/New Game sets session intent independently of player,
+camera, and level lifetime. Once a level has valid player/camera/model resources,
+P2 joins automatically with the configured default split orientation. Level
+cleanup re-arms that request, so retry and subsequent levels retain co-op.
+A successful join consumes it: manual drop-out or P2 death does not cause an
+immediate respawn loop. Top-row 9 can still join/reposition; 8 drops out; 0 exits.
+Returning to the main menu clears session intent; choosing ordinary Continue,
+New Game or Training uses singleplayer startup. No separate save slot is added.
+
+Validation: release build/link, DLL validator, menu-hook operands checked against
+the supported retail EXE, and 17 isolated native regression suites. Menu tests
+cover save availability, action routing, Back, input release, navigation, resource
+readiness, retry rejoin and manual drop-out. The game was not launched; native
+menu appearance and end-to-end gameplay/retry still need a manual test.
+
+Previous build notes:
+
+CPLAYER-13-EFFECTS
+=================================
+World effects now draw inside each camera's submission, before that pane is
+flushed. The original later Bit_Display stage retains common screen text and
+unrecognized custom slots; world slots already submitted are suppressed there.
+The original simulation/update stage is never replayed.
+
+Coverage: all eleven verified world-effect slots registered by retail Bit_Init:
+flat sprites, linked two-ended sprites, pixels, plain/gradient polylines, world
+quads (including character shadows), chunks, glows, glass, gradient lines and
+special-display ribbons. Web restraints use this effect system rather than the
+ordinary actor-model lists. Both players see the same live world effects.
+
+Each pass exposes the selected view's complete camera scratch (including the
+inverse matrix) to direct MikeCamera readers. The fixed-point sprite projection
+uses the current 3D projection's focal lengths and center, converted to logical
+screen units and accounting for the legacy matrix's existing X/Y aspect scale.
+This removes the old full-screen-center assumption. Each pane's D3D viewport
+clips its submission. Camera, math registers and matrices are restored afterward.
+Common text remains once, and gameplay/lifetimes remain once per frame.
+
+No changes to player controls, settings, zone activation or cinematic routing.
+Effect diagnostics report submitted list counts per camera and unknown slots.
+Unknown registered slots retain original single-pass behavior until classified;
+this is not a claim that every boss-specific custom visual path is adapted.
+
+Validation: VS6 release build/link, DLL validator and 16 native suites.
+The original EXE's isolated sprite-projection arithmetic is checked against the
+world projection in both layouts and rotated/ceiling camera bases. Runtime
+adapter tests cover two view submissions, common text once, slot/camera/GTE
+restoration, original fallback and unchanged lifetime. No game launched.
+Manual retest: web an enemy and observe the restraint from both cameras; inspect
+both players' shadows while moving/turning; test impact sprites, smoke, web lines
+and sparks in both layouts and full-screen P1/P2. Check pause and question-mark
+cinematics. Keep coop-diagnostics.log if a particular effect remains absent.
+
+Previous build notes
+====================
+
+CPLAYER-12-CONFIG
+================================
+Two real CPlayers and CCameras share one simulated world. The older prototype
+notes below are historical; CSuper, pose mirroring and binding-only actions no
+longer describe the current implementation.
+
+Ceiling camera alignment:
+- Late-joining P2 preserves the 25 authored camera preset values written by
+  retail SetSpideyCamValue. The CPlayer constructor previously reset these to
+  stock defaults, including ceiling XZ=800/Y=100, even when the level had tuned P1.
+- This copies preset configuration only. Each player's camera position,
+  interpolation, attachment and cinematic ownership remain independent.
+- P2 world drawing exposes P2 as the legacy render owner and its CCamera as
+  CameraList. Both actual player lists are still drawn exactly once per view.
+  Retail player-specific ceiling fading now recognizes P2 as its view owner.
+  The enclosing P1 pointers are restored before HUD capture/continuation.
+- No changes to collision, section activation or cinematic scheduling.
+- Diagnostics now include ceiling attachment, surface normal, selected preset,
+  and the authored ceiling XZ/Y distances for both players.
+
+Options -> CO-OP CONFIGURATION:
+- Movement bindings: Left, Right, Forward, Backward.
+- Action bindings 1: Jump, Punch, Kick, Swing.
+- Action bindings 2: Aim, Web, Zipline.
+- Default split: VERTICAL (left/right) or HORIZONTAL (top/bottom).
+  Applies immediately and on the next join. Top-row 6 still cycles all views.
+- Restore defaults restores the original arrow/keypad bindings and vertical split.
+- Select a binding, release the selection key, then press the new key. Escape
+  cancels capture. Duplicate P2 bindings swap so both actions remain available.
+- Escape, Enter/keypad Enter and top-row 0/6/8/9 remain reserved for navigation
+  and mod controls. Top-row 0 remains the emergency exit.
+- Changes autosave to coop-settings.ini beside SpideyPC.exe. A failed write is
+  shown in the page title. P1's stored controls are not changed; overlapping
+  P2 keyboard keys are suppressed only during joined, unpaused gameplay.
+
+Validation: release build/link and DLL validator; 15 native suites including
+configuration navigation/capture/persistence and authored ceiling preset
+inheritance. No game launch or visual verification.
+Manual check: enter Options, rebind a movement/action key, switch default split,
+exit and reopen the game to check persistence. Join P2, crawl floor -> wall ->
+ceiling with P1 stationary, then exchange roles. Check overhead framing and
+ceiling visibility in both layouts. Retest a question-mark cinematic and pause.
+
+Historical implementation notes follow
+======================================
+
+Shared-world two-view prototype
+===============================
+The original game simulates the world once. The extra pass calls render setup,
+background rendering, actor-list rendering and the P2 draw-only path. No Display,
+AI, input, triggers, or particle-update routines are replayed.
+
+9: join/reposition. 8: leave. 7: pose mirroring. 6: left/right, top/bottom, full.
+Top-row 0: exit. Arrow keys: P2 movement. Keypad 1: basic jump.
+Keypad 2 punch, 3 kick, 0 swing, 4 aim, 5 web, 6 zip are captured separately,
+but remain binding-only. No combat, aim mode, projectiles, swinging or zip physics.
+HUD reports this limitation. P2 remains CSuper plus our controller, not CPlayer.
+P1 keyboard bindings overlapping P2 keys are suppressed only while P2 is joined;
+controller mappings and stored keyboard settings are preserved.
+
+Rendering:
+Retail D3D7 device pointer 006B791C; software-renderer flag 006B78F8.
+Flush P1 through PCGfx_EndScene(0) with its viewport, begin P2 in its own viewport
+(retail Clear affects that viewport), draw same live geometry and actor lists,
+flush without presenting. Resume a HUD batch with D3D BeginScene and the exact
+queue initialization from DXPOLY_BeginScene, omitting its framebuffer Clear.
+Original later EndScene/presentation still runs once. Software path falls back
+to the reserved pane. Per-view particles and bespoke effects need further work.
+Projection and clipping arrays are restored; second setup suppresses fog stepping
+without advancing the global render stamp artificially. No global MechList swap.
+The native viewport scratch is 20 bytes; decompiled SViewport is incomplete.
+Each camera scratch is 0x94 bytes, including retail derived transform storage.
+
+Camera:
+P2 captures the original orientation on join, then follows its own position.
+Full follow modes, camera collision, rotation control are not implemented.
+P1 gets a bounded, line-of-sight-tested sideways camera translation in left/right
+mode to remove shoulder framing. Original gameplay camera data stays untouched.
+Left/right preserves vertical FOV. Top/bottom raises focal length 35 percent on
+both axes to reduce peripheral distortion; both panes use the same narrower FOV. 16:9 world projection is
+corrected relative to the original 4:3 camera tuning; legacy full-screen HUD art
+has not been redesigned for widescreen. Letterboxing disables the split.
+
+Movement:
+Router-owned COOP_MOTION supports a preview body without allowing retail combat
+or input APIs to treat it as a CPlayer. 110 units/s, diagonal normalization,
+floor queries and line-of-sight blocking, basic jump/gravity/landing.
+No full capsule collision, wall climbing, moving-platform attachment, damage or
+mission-trigger participation. Unsupported-ground movement is blocked.
+Movement now follows retail CPlayer::AI dispatch (vtable slot 0053C46C), using
+P1 field_80 simulation time. Input polling never moves P2. Pause menus therefore
+cannot advance the prototype independently. Focus loss, timer pause and
+letterboxing also suppress motion; delta is capped at 50ms.
+Repeated 9 resets motion. Leaving invalidates input/controller lifetime handles.
+Pose mirroring remains separate from movement; without mirroring pose is frozen.
+
+Validation:
+run_router_tests.py: registry, routing, motion callbacks and time step behavior.
+run_projection_test.py: runs only original arithmetic in a private image copy,
+validates both viewport centers and equal X/Y scaling at 4:3 and 1280x720.
+run_frustum_test.py: original fixed-point plane calculation cancels pane offsets
+correctly; this rules out the suspected viewport-origin frustum defect. It also
+checks independent camera rotation through original GTE arithmetic helpers.
+These do not validate live D3D submission or level-specific visibility/effects.
+The game is never launched by these tests.
+
+FOV-PAUSE-1 build status:
+The separation failure has NOT been reproduced or proven fixed. Emulated GTE
+registers and PC fog/projection parameters are now restored after the second
+view, alongside the previously restored matrices and planes. No speculative
+frustum patch is enabled. coop-diagnostics.log beside SpideyPC.exe records P1/P2
+positions, P2 camera position, input, simulation delta and last floor query once
+per second while P2 is joined. Share/review this after reproducing separation.
+
+Full retail movement/actions remain unfinished. Retail CPlayer constructor
+004B9EB0 attaches to 006A9038, increments singleton count 006A9034 and asserts
+one player, and resets shared animation globals. AI 004C65C0 uses a per-player
+control pointer at +E0C and shared CCamera list 0056F3B8. A second instance needs
+owned construction/destruction and scoped player/camera/animation contexts;
+calling AI on the current CSuper allocation would read beyond the object.
+
+ACTIVATION-2 (supersedes the separation diagnosis above):
+Confirmed: retail M3d culling 0046FAD0 writes CItem mFlags bit 8000 at
+00470291/00470282. This is view rejection, not a player inactivity flag. The
+old prototype tested it before movement, split setup, spawn, and pose sync.
+Those gates are removed. Second-view list rendering combines per-item visible
+results from both views; unrelated flags are preserved.
+
+Retail body suspension compares ApproxMag at 0046102E against SuspendedDistance
+0054E33C. Wake-up repeats that comparison at 00461187. Both calls now route to
+the minimum retail distance to P1 or the live P2 render body. The radius and
+original suspend/wake list handling remain unchanged. Objects between widely
+separated participants still sleep when outside both regions; P2 departure
+returns immediately to P1-only policy. No MechList swap or repeated AI pass.
+The cached body distance at +E4 now reflects the nearest participant at that
+retail update site. Script-driven suspension remains unchanged.
+
+Static zone collision searches use the query's endpoints, not P1's position.
+This patch does not duplicate Zones or promise cross-level resource residency.
+Validate separation, looking away, returning, pause, and P2 departure in-game.
+Diagnostics additionally record the suspension radius/count and player flags.
+
+ENVIRONMENT-3:
+Read-only live inspection found 301 resident EnviroList objects, 197 with the
+explicit hidden bit (mFlags & 1), including objects near P2. This establishes
+resident hidden geometry, but does not prove which command caused every hide.
+
+Hook only ExecuteCommandList's Utils_SetVisibilityInBox call at 004E0E53.
+The original command still runs first. Finite hide-inside boxes are recorded
+as authored areas: P2 inside such an area keeps affected static objects visible.
+Hide-outside boxes retain their original dimensions and their offset relative
+to P1; a copy of that box follows P2. Original visibility remains authoritative
+outside the additional P2 coverage. Leaving or despawning restores owned hides.
+Detectable outside changes to the hidden bit relinquish ownership; unrelated
+flags, gameplay scripts and resource residency are not modified. Whole-world
+reset boxes and objects not touched by a tracked command are excluded.
+
+This is an environment visibility-command adapter, not a resource loader or a
+full P2 controller. No claims about unknown commands or cross-level residency.
+The box commands must run after this DLL loads (restart the game/level). Logs
+identify ENVIRONMENT-3 and add environment tracked/held counts. Zero tracked
+means this hook has not encountered a qualifying command, not successful
+activation. Reproduce the boundary and inspect these counts before drawing a
+conclusion about this level. Earlier naive floor/movement behavior is unchanged.
+Tests: fixed areas, translated boxes, departure, destruction/hide overrides,
+explicit visible commands. Runtime level behavior still requires user testing.
+
+CAMERA-4:
+User test of ENVIRONMENT-3 reported tracked=0/held=0. That adapter did not engage
+and must not be described as having fixed this level's environment boundary.
+
+P2 camera now rotates its join-time orientation and offset towards the actual
+movement direction, with bounded yaw speed on simulation ticks. P2 body faces
+its travel direction. A held arrow combination retains its world-space heading
+while the camera catches up; a changed combination samples the new camera basis.
+Rotation is rebuilt from the captured base matrix, avoiding cumulative fixed-
+point rounding damage. Camera-to-P2 line-of-sight pulls the camera in when the
+ray is obstructed. This is still a custom follow camera, not retail CCamera AI.
+
+The underlying CSuper movement remains a prototype. Logs identify CAMERA-4 and
+report blocked=1 for missing candidate floor, blocked=2 for obstructed movement,
+0 otherwise. Current-floor success alone did not establish why movement stopped.
+The black boundary is NOT proven fixed. Test turning while holding/releasing
+arrows, both split layouts, pausing, and walking to the boundary while holding a
+direction for a few seconds so diagnostics capture the rejection reason.
+
+
+CPLAYER-5 - 2026-09-13
+The CSuper-only preview and custom movement/camera code have been retired.
+P2 is a separately constructed retail CPlayer with its own retail CCamera
+and input state. See COOP_ROUTER.txt for lifecycle/context boundaries.
+Both split layouts retain independent submissions and viewport projection.
+Second-view camera data now comes from P2 original CCamera, not a translated
+copy of P1's camera. Original gameplay animations replace key-7 mirroring.
+No claim that black-zone rendering or every gameplay singleton is fixed.
+
+CPLAYER-9-VIEWS (2026-09-14)
+Camera presentation no longer controls authored section ownership. The former
+SPLIT_OFF option means P1 full screen while P2 remains joined, simulated and
+protected by its own section/activation requirements. The independent camera
+AI continues regardless of which view is displayed. Only actual departure
+releases that participant's section ownership.
+6 cycles left/right -> top/bottom -> P2 full screen -> P1 full screen -> repeat.
+Single-view modes show the matching personal HUD and the common overlay.
+P2 full screen currently reuses the proven second render submission: P1's
+preliminary render is covered by the full-screen P2 clear/draw. No simulation
+is duplicated. This retains some rendering overhead in P2 full-screen mode.
+Validation: VS6 build/link, DLL validator, 10 native co-op suites plus retail
+projection and frustum suites passed. New regression compiles actual runtime
+section sync with a fake resource table; 16 camera changes retain both players'
+zones and only actual departure releases P2's zone. P2 full-screen projection
+and four-mode HUD ownership also pass. No live game launch performed.
+Test with players in separate zones, cycle 6 repeatedly, move each while its
+camera is hidden, return to split and check floors/models and HUDs. A fresh
+launch is required to load this DLL; already-lost section state in an older
+running build cannot be repaired by replacing its DLL on disk.
+
+CPLAYER-11-CAMERA (2026-09-14)
+P2 camera and cinematic follow-through corrections:
+- P2 player simulation and camera simulation now have separate entry points.
+  The camera ticks at the original P1 camera-list update call (4555FC), after
+  player/actor simulation, rather than inside P1's player AI call. It continues
+  during scripted letterboxing while P2 player input remains held, and stops
+  during pause. Original CCamera AI and LoadIntoMikeCamera remain in use.
+- Transient emulated GTE math registers are restored around secondary player
+  and camera updates so their surface/orientation math cannot leak into the
+  enclosing primary update. Per-camera state remains independent.
+- Both narrow left/right views now use the same bounded shoulder-centering
+  adjustment and native collision ray check. Previously only P1 received it.
+  Other layouts retain their original camera positions/FOV handling.
+- Question-mark cinematic ownership persists beyond the initial pending queue.
+  While the shared letterbox session is active, later unowned NPC/trigger
+  command pulses continue in the initiating player's context, including the
+  ending camera mode/attachment commands. Explicitly owned commands keep their
+  own owner. This is a shared cinematic session, not independent concurrent
+  cutscene playback. On completion, ownership is released for normal scripts.
+- Letterbox and HUD offset changes are exported from P2's context to shared
+  presentation. P2-owned cinematics display its authored camera full screen;
+  split HUD replay is disabled during the cinematic. The chosen gameplay
+  layout returns when the closing script clears letterbox. If the cinematic
+  owner departs, the shared letterbox ownership is released safely.
+- Camera diagnostics include cinematic owner, letterbox, P1/P2 camera modes,
+  P2's tripod/expected player, enabled flag and focus attachment.
+
+Validation: VS6 release build/link, DLL validator and 14 suites pass. Added
+production-helper surface-basis/blocked-ray tests and expanded player-context
+and script tests for camera-only ticks, GTE restoration, later NPC pulses and
+closing ownership. Existing section, routing, HUD, projection/frustum tests
+pass. No game launch or live visual verification performed.
+Manual retest: P2 question-mark cinematic, wait through completion, move P2,
+crawl wall -> ceiling -> wall -> floor; repeat with P1 triggering a cinematic.
+Check both split orientations, all four camera views and pause/unpause. Keep
+coop-diagnostics.log if a mode/attachment remains stuck. These code-level
+checks do not establish that every mission-specific cinematic is covered.
+
+2026-09-30: Shared authored camera policy, independent camera poses
+The latest runtime log ends in L5A4_G with letterbox=0, no native player script,
+P1 camera mode 3 (follow) and P2 camera mode 5 (fixed position/angles).
+Installed sewer scripts L5A3 nodes 130/158 and L5A4 nodes 123/148 explicitly
+release using 160,3,187,0: camera SetMode(DEMO), player SetCamAngleLock(false).
+The shared dispatcher had applied these rules to only the current legacy owner.
+coop_camera_policy_runtime.h hooks only the two native script setter calls,
+004E274C and 004E23F8, and queues the counterpart rule before camera updates.
+This is shared authored policy rather than a per-level camera reset. Individual
+tripod, position, orientation, animation, aiming and camera physics stay native.
+The latest authored setting wins; an early join retains pending policy; level
+teardown clears it. Merely ending a letterbox does not cancel fixed camera modes,
+so authored chase building camera scenes remain fixed until their real release.
+Both owner directions, separate tripods/poses, fixed-scene preservation,
+late joins, repeated flush and intact singleplayer were regression tested.
+Diagnostics/End include camera-policy hook, pending rules and setter counters.
+Sewer runtime confirmation remains pending; no game was launched.

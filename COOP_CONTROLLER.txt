@@ -1,0 +1,25 @@
+CPLAYER-42: one-controller co-op routing (2026-09-24)
+
+Options -> CO-OP CONFIGURATION now has one direct controller ownership
+setting, ONE CONTROLLER: P1/P2. The old manual Controller Slot and
+three-way P2 Input Mode settings are removed. Existing
+SingleControllerOwner=1/2 values remain valid. Old ControllerSlot and
+InputMode values are ignored and removed on the next configuration save.
+
+With no connected XInput controller, P2 uses the configured keyboard
+bindings. With one, P1 or P2 receives it according to ONE CONTROLLER;
+the other player uses the keyboard. P2 ownership suppresses the game's
+native DirectInput poll for that pad during gameplay input mapping so
+it cannot also move P1. With two or more, the first detected pad stays
+with native P1 and the second detected pad drives P2, regardless of
+the one-controller preference. Sparse XInput slot numbering is allowed.
+
+P2 controller binding capture uses the assigned second pad when two
+are connected, or the sole pad when just one is connected. Default
+split orientation is directly below ONE CONTROLLER in the settings
+page. Existing keyboard/controller bindings and the End/comma utility
+keys remain unchanged.
+
+VS6 build/link, Tobey validator, and 26 native co-op behavioral suites
+passed. The game was not launched; controller switching still needs
+an in-game check in Spider-Man-decomp-baseline.

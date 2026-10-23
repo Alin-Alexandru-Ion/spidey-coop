@@ -1,0 +1,27 @@
+CPLAYER-41: P2 costume default and menu preview (2026-09-24)
+
+The CO-OP main-menu page has Continue, New Game, P2 Costume, and Back.
+P2 Costume begins at DEFAULT, which means Ben Reilly. DEFAULT is always
+available; Ben Reilly is not an additional unlock-gated choice. Cycling
+visits Classic and the other costumes unlocked in the active save, then
+returns to DEFAULT. The choice persists as CO-OP/P2Costume in
+coop-settings.ini and does not alter P1's suit.
+
+The rear Spidey in the co-op menu uses the selected P2 costume's PSX
+resource. The supported retail CDummy constructor passes its model-name
+argument to Spool_PSX, so the rear actor can use that resource while the
+front actor retains P1's original model. P2's CurrentSuit is scoped for
+construction, then P1's value is restored. Their staggered animation and
+rear placement are unchanged. Every visit to the co-op page builds the
+preview from the current selection, including after cycling a costume.
+
+Gameplay P2 uses the same selected resource and its own CurrentSuit
+context. Continue can load a different save after the co-op submenu; the
+selected alternative is checked against the newly active slot at player
+construction. An unavailable alternative falls back to DEFAULT (Ben
+Reilly) for that run.
+
+The VS6 build and link, Tobey validator, supported EXE menu operands and
+CDummy-to-Spool_PSX call, and 26 co-op behavioral suites passed. The game
+was not launched. Preview appearance and Continue-slot behavior still
+need visual testing in Spider-Man-decomp-baseline.

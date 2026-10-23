@@ -4,6 +4,7 @@
 #include "dcfileio.h"
 #include "DXinit.h"
 #include "SpideyDX.h"
+#include "spool.h"
 
 #include <cstring>
 #include <cstdlib>
@@ -506,6 +507,8 @@ u16* PCTex_CreateClut(i32 colorCount)
 	return clut->mClut;
 }
 
+#include "coop/presentation/coop_ui_remake.h"
+
 // @Ok
 // @AlmostMatching: a1 and a2 keep swapped registers through the whole function
 // (ebp/edi), which drags a few more register swaps along, everything else lines up
@@ -738,6 +741,7 @@ i32 PCTex_CreateTexture16(
 	}
 
 	Mem_Delete(pBmpBuf);
+	CoOpUiRemakeTryApply(textureHandleIndex, a3, a1, a2);
 
 	return textureHandleIndex;
 }
@@ -1007,8 +1011,55 @@ i32 PCTex_CreateTexture256(
 	}
 
 	Mem_Delete(pBmpBuf);
+	CoOpUiRemakeTryApply(textureHandleIndex, a3, a1, a2);
 
 	return textureHandleIndex;
+}
+
+// The retail executable creates its textures itself: game_patches() is not
+// installed by the shipped DLL. Inspect the live texture table from the active
+// render path instead of relying on the reconstructed creation functions.
+void CoOpUiRemakeScan(void)
+{
+	static bool announced = false;
+	static IDirectDrawSurface7* attempted[GLOBAL_TEXTURE_COUNT] = {0};
+	static const void* attemptedSource[GLOBAL_TEXTURE_COUNT] = {0};
+	if (!announced)
+	{
+		CoOpUiRemakeLog("loader", "runtime texture scanner active");
+		announced = true;
+	}
+	for (i32 index = 8; index < GLOBAL_TEXTURE_COUNT; ++index)
+	{
+		SPCTexture& texture = G_GLOBAL_TEXTURES[index];
+		if (!texture.mD3DTex)
+		{
+			attempted[index] = 0;
+			attemptedSource[index] = 0;
+			gCoOpUiRemakeSurfaces[index] = 0;
+			continue;
+		}
+		if (texture.mD3DTex == attempted[index] &&
+			texture.pTextureData == attemptedSource[index]) continue;
+		if (texture.field_64 != 0x10 && texture.field_64 != 0x100) continue;
+		if (!CoOpUiRemakeSourceOffset(texture.pTextureData)) continue;
+		gCoOpUiRemakeSurfaces[index] = 0;
+		IDirectDrawSurface7* original = texture.mD3DTex;
+		CoOpUiRemakeTryApply(index, texture.pTextureData,
+			texture.mSizeOne, texture.mSizeTwo);
+		attempted[index] = texture.mD3DTex;
+		attemptedSource[index] = texture.pTextureData;
+		if (original == texture.mD3DTex)
+			CoOpUiRemakeLog("loader", "matched a bits texture but retained retail surface");
+	}
+}
+
+bool CoOpUiRemakeIsHeadTexture(i32 textureId)
+{
+	return textureId >= 8 && textureId < GLOBAL_TEXTURE_COUNT &&
+		gCoOpUiRemakeSurfaces[textureId] &&
+		G_GLOBAL_TEXTURES[textureId].mD3DTex == gCoOpUiRemakeSurfaces[textureId] &&
+		CoOpUiRemakeSourceOffset(G_GLOBAL_TEXTURES[textureId].pTextureData) == 0x00005468;
 }
 
 // @Ok

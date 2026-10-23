@@ -1,0 +1,166 @@
+CPLAYER-25-SCORPION HUD update - 2026-09-23
+The shared native boss-health call runs once. In co-op its captured artwork is
+centered at the bottom of the full display, independent of split orientation.
+When a protected-character bar is present, its row is centered above the boss
+bar. Singleplayer retains native placement. Boss HUD diagnostics record the
+captured command count, row split and offsets for the live Scorpion test.
+
+CPLAYER-8-HUD - 2026-09-14
+
+Personal HUD
+The retail Panel_Display routine draws once with P1's CPlayer context and once
+with P2's CPlayer/camera context. This reads the actual health/max health,
+webbing, cartridge count, special web state, armor and costume portrait state.
+The shared Sp, Compass and Webcart sprite resources are supplied to P2 at draw.
+P2's health/head/web artwork reflects around its pane's right edge. The web
+cartridge icon and ammo text move with that cluster but keep readable artwork
+and glyph order. P1 keeps its original upper-left cluster in its own pane.
+Both left/right and top/bottom layouts use their own viewport clipping.
+
+Compass, aim reticle, screen target markers and offscreen Spider-Sense are
+owned by their player/view. Reticles are projected with the matching camera.
+Spider-Sense is captured at its original AI-time invocation: drawing another
+pane does not age the same indicator trails twice.
+Simple messages created inside a player/trigger context carry a generation-
+checked player owner. Unowned messages remain shared. Messages from deferred
+scripts without a player context deliberately remain shared; identifying
+additional mission-specific ownership requires auditing those script paths.
+
+Common HUD
+The original boss/protected-character bars and mission timer draw once in a
+full-screen pass. Mission title, training and unowned simple messages join
+that pass. Transition fades execute once after personal HUD drawing. Existing
+pause/menu flow remains single and retains the restored full viewport.
+The second panel call suppresses both the inline shared countdown update and
+the timer/module callback. Message lifetime updates are unchanged.
+
+Implementation
+coop_hud.h: bounded quad queue and pane/artwork/text coordinate transforms.
+coop_hud_runtime.h: checked retail hooks, context capture and DX7 submission.
+coop_retail_player.h / coop_players.h: scoped context callback with no tick.
+main.cpp: frame reset, per-camera markers, final HUD replay and diagnostics.
+The exact supported executable call targets and complete detour prologues are
+checked before installing any HUD hooks. Software-renderer HUD falls back to
+the original path. Drop-out or split OFF also selects the original HUD path.
+HUD diagnostics include installed/enabled, captured/dropped quads, per-player
+panel call counts and shared timer call count. Expected active values: two
+panel calls (one each), one timer call, zero dropped quads.
+
+Verification
+VS6 Release build/link and tobey-validator passed.
+Nine native co-op suites passed, including HUD struct-by-value ABI matching
+retail scalar arguments, mirrored UVs, readable icon/text placement, both pane
+orientations, atlas UV spans, queue overflow and no-tick context restoration.
+Retail projection and frustum arithmetic suites passed (11 suites total).
+Supported retail EXE hash plus 15 call targets and three detour prologues
+verified against the installed executable without running its entry point.
+Font glyphs traced through SlicedImage2_draw -> PCGfx_DrawTexture -> Quad2D.
+No game was launched. These checks do not establish live visual correctness.
+
+Manual acceptance
+Launch only Spider-Man-decomp-baseline/SpideyPC.exe through CO-OP > CONTINUE or
+NEW GAME. Comma cycles views; End exits. Verify independent
+HP changes and web use, readable ammo, armor/special-web pickups, compass and
+aim markers, pause/unpause, layout changes, drop-out/rejoin, then boss and
+mission timer scenes. Confirm shared elements appear once across the screen.
+If anything is missing/misplaced, retain coop-diagnostics.log from that test.
+The original installation and the confirmed authored-zone union are untouched.
+
+CPLAYER-37 follow-up (2026-09-24): The original compass target/status belong
+to the shared level, while Panel_DisplayCompass computes direction from the
+active camera's saved view. The normal panel has two conditional compass call
+branches; co-op no longer relies on either branch. The P1 and P2 panel paths
+each call the original compass renderer once after their panel draw, under
+their own saved camera context and personal overlay capture. A disabled
+compass target still suppresses both, and singleplayer retains retail calls.
+Per-player call counts, shared target coordinates and status now appear in
+coop-diagnostics.log. The native-call test verifies one compass calculation
+per distinct camera state; live positioning/direction still need a playtest.
+
+CPLAYER-39 follow-up (2026-09-24): Race/chase progress callbacks from the
+Venom, L2A1, L5A5, and Super Ock modules now capture their original art and
+labels as one shared HUD group in co-op. The group sits at the bottom of the
+full display in either split orientation. Placement checks the actual mapped
+compass quads for both visible players: it uses another bottom position if
+the center is occupied, then moves just above the compass if needed. The
+native progress callback still runs exactly once and the single-player path
+keeps retail placement. coop-diagnostics.log reports race command count and
+final offset. The supported EXE's four module entries, 25 behavioral suites,
+VS6 build/link, and Tobey validator were checked; live race layout remains
+for the isolated-install playtest.
+
+CPLAYER-40 follow-up (2026-09-24): Each visible camera pane projects the other
+player's position using its own saved retail camera and projection. A P1/P2
+label with a small pointer follows an on-screen partner, with size tied to the
+partner's projected body height. An off-screen partner gets a directional
+arrow on that pane's edge. This works in both split layouts and the two
+single-camera presentation modes. A dead player awaiting checkpoint respawn
+has no misleading world marker. The game queues these as ordinary per-view
+HUD quads after both world views are submitted, without changing camera or
+world simulation. Diagnostics log 0 hidden, 1 label, or 2 edge arrow per view.
+The projection, scale, rotated-camera direction, pane bounds, VS6 build,
+Tobey validator, and 26 co-op behavioral suites passed. Live marker placement
+and legibility still need checking in the isolated test copy.
+
+CPLAYER-43 follow-up (2026-09-24): Both camera panes place the partner's P1/P2
+label above a downward pointer. The pointer tip stops several screen pixels
+short of the head. Head position is estimated 64 world units along the
+player model's rotated local -Y axis; it follows wall and ceiling orientation
+instead of using a fixed upright screen offset. If the head is too close to
+the viewport's top edge to fit the complete label-arrow-gap stack, the
+viewport edge arrow is used instead. Off-screen direction and distance
+scaling remain unchanged. Native tests verify P1/P2 symmetry, head rotation,
+label/arrow ordering, gap and pane boundaries. Live placement is unverified.
+
+CPLAYER-44 follow-up (2026-09-24): The isolated game's diagnostic log showed
+partner markers being projected and queued (both label and edge-arrow states,
+zero HUD-command drops), but none was visible. The marker quads used a negative
+2D depth, which PCGfx maps behind world geometry; its label rectangles also
+fed crossed vertices to the DX7 triangle fan. Markers now use a small positive
+near-HUD depth with alpha blending and perimeter-ordered vertices. Native
+tests check near depth, blend and non-crossing label corners in both player
+views, plus the edge arrow. Visual confirmation in the game remains needed.
+
+CPLAYER-45 follow-up (2026-09-24): The prior 3x5 P1/P2 text could shrink to
+fractions of a screen pixel with distance, making both labels illegible even
+though the marker was visible. Keep the existing badge design but use explicit
+5x7 P, 1 and 2 bitmap glyphs with a minimum raster cell of 1.8 screen pixels.
+The head pointer and off-screen edge arrow are modestly larger; the projected
+head gap and top-edge fallback account for the new badge size. Native tests
+reconstruct both rendered glyph patterns and check pointer size/placement.
+
+CPLAYER-46 follow-up (2026-09-24): P1/P2 glyphs were present in the queue,
+but all badge pieces shared DX7 slot zero. DXPOLY prepends each polygon, then
+renders the slot in reverse insertion order; the dark background could cover
+the lettering. Enqueue the background last so it renders first, then the
+stripe and finally the explicit 5x7 white glyphs. Size one bitmap cell from
+the full display height instead of the individual split pane: the minimum is
+2 screen pixels at 480p and 4.5 at 1080p in either split orientation. The
+head gap, pointer, edge arrow, and top-edge fallback scale with it. Tests
+verify the P1/P2 pixels, queue layering, and equal 1080p scale for both
+orientations. Live visual confirmation remains pending.
+
+2026-09-30 per-body armor appearance: retail RenderSuperItem only substitutes
+the spArmor resource when its body is MechList, which represents the active
+view owner. Thus P1's armor disappeared in P2's view and P2's disappeared in
+P1's view. coop_armor_runtime.h replaces only that model-region choice with
+the registered body's own field_5E9; both cameras now select its armor model.
+MechList/CameraList remain the view context for wall/ceiling/prop fading.
+The adapter does not change either body's saved costume or mutate shared
+mesh/texture resources. Other bodies and the original singleplayer graphics
+branch keep their original region selection.
+
+P2's constructor temporarily sets 006A9040 to suppress a shared suit texture
+mutation. That guard was left set even though P2's armor state was false,
+so native SetArmor(true) returned before enabling armor on the body. After
+construction the private flag now follows P2's actual field_5E9. The native
+pickup can therefore enable both armor gameplay state and its private
+costarm portrait/armor readout in Panel_Display. The existing mirrored HUD
+captures those native elements; no armor reward or HUD is granted to P1.
+
+Tests cover each body's pickup/removal in both view contexts, unchanged suit
+regions, singleplayer fallback and independently banked armor/HUD flags.
+Native hook bytes and all 33 regression cases pass. Live visual validation
+is still required for P1-only, P2-only and simultaneous armor pickups in
+both split layouts. Logs/End captures include each body's armor state,
+private armor latch/portrait/capacity and model-selection counters.

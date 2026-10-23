@@ -179,7 +179,7 @@ CLEAN :
 "$(OUTDIR)" :
     if not exist "$(OUTDIR)/$(NULL)" mkdir "$(OUTDIR)"
 
-CPP_PROJ=/nologo /MT /W3 /GX /O2 /Op /Ob2 /I "directx\include" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /Fp"$(INTDIR)\spider.pch" /YX /Fo"$(INTDIR)\\" /Fd"$(INTDIR)\\" /FD /c 
+CPP_PROJ=/nologo /MT /W3 /GX /O2 /Op /Ob2 /I "." /I "directx\include" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /Fp"$(INTDIR)\spider.pch" /YX /Fo"$(INTDIR)\\" /Fd"$(INTDIR)\\" /FD /c
 MTL_PROJ=/nologo /D "NDEBUG" /mktyplib203 /win32 
 BSC32=bscmake.exe
 BSC32_FLAGS=/nologo /o"$(OUTDIR)\spider.bsc" 
@@ -476,7 +476,7 @@ CLEAN :
 "$(OUTDIR)" :
     if not exist "$(OUTDIR)/$(NULL)" mkdir "$(OUTDIR)"
 
-CPP_PROJ=/nologo /MT /W3 /GX /O2 /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_MBCS" /Fp"$(INTDIR)\spider.pch" /YX /Fo"$(INTDIR)\\" /Fd"$(INTDIR)\\" /FD /c 
+CPP_PROJ=/nologo /MT /W3 /GX /O2 /I "." /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_MBCS" /Fp"$(INTDIR)\spider.pch" /YX /Fo"$(INTDIR)\\" /Fd"$(INTDIR)\\" /FD /c
 MTL_PROJ=/nologo /D "_DEBUG" /mktyplib203 /win32 
 BSC32=bscmake.exe
 BSC32_FLAGS=/nologo /o"$(OUTDIR)\spider.bsc" 
@@ -937,7 +937,14 @@ SOURCE=.\m3dzone.cpp
 
 SOURCE=.\main.cpp
 
-"$(INTDIR)\main.obj" : $(SOURCE) "$(INTDIR)"
+"$(INTDIR)\main.obj" : $(SOURCE) .\coop\core\coop_context.h .\coop\core\coop_players.h .\coop\core\coop_router.h .\coop\core\coop_session.h .\coop\player\coop_armor_runtime.h .\coop\player\coop_costume.h \
+	.\coop\player\coop_entry_state.h .\coop\player\coop_life.h .\coop\player\coop_life_runtime.h .\coop\player\coop_retail_player.h .\coop\player\coop_spawn.h .\coop\input\coop_config.h \
+	.\coop\input\coop_controller_route.h .\coop\input\coop_gamepad.h .\coop\input\coop_gamepad_runtime.h .\coop\input\coop_input.h .\coop\world\coop_activation.h .\coop\world\coop_environment.h \
+	.\coop\world\coop_fall_triggers.h .\coop\world\coop_sections.h .\coop\world\coop_world_trace.h .\coop\camera\coop_aim.h .\coop\camera\coop_camera_policy_runtime.h .\coop\camera\coop_camera_tuning.h \
+	.\coop\camera\coop_view.h .\coop\presentation\coop_capture_pixels.h .\coop\presentation\coop_display_msaa_runtime.h .\coop\presentation\coop_effects.h .\coop\presentation\coop_effects_runtime.h .\coop\presentation\coop_exit_capture_runtime.h \
+	.\coop\presentation\coop_hud.h .\coop\presentation\coop_hud_runtime.h .\coop\presentation\coop_partner_marker.h .\coop\presentation\coop_resolution_runtime.h .\coop\presentation\coop_ui_remake.h .\coop\script\coop_cinematic_tick.h \
+	.\coop\script\coop_crane_fallback.h .\coop\script\coop_script_location_runtime.h .\coop\script\coop_script_motion.h .\coop\script\coop_traversal_exit.h .\coop\interaction\coop_interaction_runtime.h .\coop\interaction\coop_interactions.h \
+	.\coop\interaction\coop_projectile_collision_runtime.h .\coop\interaction\coop_rhino_runtime.h .\coop\menu\coop_config_runtime.h .\coop\menu\coop_menu_preview.h .\coop\menu\coop_menu_runtime.h "$(INTDIR)"
 
 
 SOURCE=.\manipob.cpp
@@ -1052,7 +1059,7 @@ SOURCE=.\PCShell.cpp
 
 SOURCE=.\PCTex.cpp
 
-"$(INTDIR)\PCTex.obj" : $(SOURCE) "$(INTDIR)"
+"$(INTDIR)\PCTex.obj" : $(SOURCE) .\coop\presentation\coop_ui_remake.h "$(INTDIR)"
 
 
 SOURCE=.\PCTimer.cpp

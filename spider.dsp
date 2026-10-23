@@ -43,7 +43,7 @@ RSC=rc.exe
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /YX /FD /c
-# ADD CPP /nologo /MT /W3 /GX /O2 /Op /Ob2 /I "directx\include" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /YX /FD /c
+# ADD CPP /nologo /MT /W3 /GX /O2 /Op /Ob2 /I "." /I "directx\include" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /YX /FD /c
 # ADD BASE MTL /nologo /D "NDEBUG" /mktyplib203 /win32
 # ADD MTL /nologo /D "NDEBUG" /mktyplib203 /win32
 # ADD BASE RSC /l 0x409 /d "NDEBUG"
@@ -69,7 +69,7 @@ LINK32=link.exe
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_MBCS" /YX /FD /GZ /c
-# ADD CPP /nologo /MT /W3 /GX /O2 /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_MBCS" /YX /FD /c
+# ADD CPP /nologo /MT /W3 /GX /O2 /I "." /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_MBCS" /YX /FD /c
 # ADD BASE MTL /nologo /D "_DEBUG" /mktyplib203 /win32
 # ADD MTL /nologo /D "_DEBUG" /mktyplib203 /win32
 # ADD BASE RSC /l 0x409 /d "_DEBUG"
@@ -1130,6 +1130,214 @@ SOURCE=.\web.h
 
 SOURCE=.\wire.h
 # End Source File
+# Begin Group "Co-op"
+# Begin Group "core"
+# Begin Source File
+
+SOURCE=.\coop\core\coop_context.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\coop\core\coop_players.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\coop\core\coop_router.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\coop\core\coop_session.h
+# End Source File
+# End Group
+# Begin Group "player"
+# Begin Source File
+
+SOURCE=.\coop\player\coop_armor_runtime.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\coop\player\coop_costume.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\coop\player\coop_entry_state.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\coop\player\coop_life.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\coop\player\coop_life_runtime.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\coop\player\coop_retail_player.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\coop\player\coop_spawn.h
+# End Source File
+# End Group
+# Begin Group "input"
+# Begin Source File
+
+SOURCE=.\coop\input\coop_config.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\coop\input\coop_controller_route.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\coop\input\coop_gamepad.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\coop\input\coop_gamepad_runtime.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\coop\input\coop_input.h
+# End Source File
+# End Group
+# Begin Group "world"
+# Begin Source File
+
+SOURCE=.\coop\world\coop_activation.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\coop\world\coop_environment.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\coop\world\coop_fall_triggers.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\coop\world\coop_sections.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\coop\world\coop_world_trace.h
+# End Source File
+# End Group
+# Begin Group "camera"
+# Begin Source File
+
+SOURCE=.\coop\camera\coop_aim.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\coop\camera\coop_camera_policy_runtime.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\coop\camera\coop_camera_tuning.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\coop\camera\coop_view.h
+# End Source File
+# End Group
+# Begin Group "presentation"
+# Begin Source File
+
+SOURCE=.\coop\presentation\coop_capture_pixels.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\coop\presentation\coop_display_msaa_runtime.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\coop\presentation\coop_effects.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\coop\presentation\coop_effects_runtime.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\coop\presentation\coop_exit_capture_runtime.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\coop\presentation\coop_hud.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\coop\presentation\coop_hud_runtime.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\coop\presentation\coop_partner_marker.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\coop\presentation\coop_resolution_runtime.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\coop\presentation\coop_ui_remake.h
+# End Source File
+# End Group
+# Begin Group "script"
+# Begin Source File
+
+SOURCE=.\coop\script\coop_cinematic_tick.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\coop\script\coop_crane_fallback.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\coop\script\coop_script_location_runtime.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\coop\script\coop_script_motion.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\coop\script\coop_traversal_exit.h
+# End Source File
+# End Group
+# Begin Group "interaction"
+# Begin Source File
+
+SOURCE=.\coop\interaction\coop_interaction_runtime.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\coop\interaction\coop_interactions.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\coop\interaction\coop_projectile_collision_runtime.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\coop\interaction\coop_rhino_runtime.h
+# End Source File
+# End Group
+# Begin Group "menu"
+# Begin Source File
+
+SOURCE=.\coop\menu\coop_config_runtime.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\coop\menu\coop_menu_preview.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\coop\menu\coop_menu_runtime.h
+# End Source File
+# End Group
+# End Group
 # End Group
 # Begin Group "Resource Files"
 

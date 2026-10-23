@@ -13,4 +13,8 @@ out_win/
 tags
 *.vpw
 *.vtg
-*.md
+
+*.log
+*.zip
+*.pyc
+__pycache__/
